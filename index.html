@@ -877,6 +877,14 @@ function updateViruses(dt){
     z.vis = seen ? Math.min(1,z.vis+dt*10) : Math.max(0,z.vis-dt*4.5);
     if (!seen) dark++;
 
+    // 躲在盲区里的病毒会偷偷嘀咕（全局 3.4 秒最多一次）
+    if (!seen && z.age > 2.0 && G.time - (G.sneakT||-99) > 3.4){
+      G.sneakT = G.time;
+      if (sayRand() < 0.55)
+        talkAdd(sayRand()<0.5 ? '别看到我' : '偷偷发育一会儿',
+                z.x, z.y-24, '255,150,150', 14, 1.6);
+    }
+
     // 变异只看时间，跟你有没有看见它无关 —— 你不看，它也在变。
     // 标记只决定一件事：这一刻能不能选中它。
     z.m = Math.min(1, z.m + dt*0.2/CFG.lvDur[Math.min(4,z.lv)]);
@@ -891,6 +899,9 @@ function updateViruses(dt){
       z.pop = 1;                       // 弹性放大（见 drawVirus）
       z.flash = 1;                     // 升级瞬间泛白
       z.reveal = 1;                    // 就算在盲区，也把新形状亮出来给玩家看
+      // 长到顶了，嚣张一句
+      if (nl >= 4) talkAdd(sayRand()<0.5 ? 'hahahaha' : '让你看看力量！',
+                           z.x, z.y-34, '255,120,120', 16, 1.9, true);
       // 爆开的冲击波：两道环 + 一圈碎屑
       addFx({k:'ring', x:z.x, y:z.y, r:z.r*0.8, grow:z.r*3.4, life:0.5, max:0.5, c:'255,236,170', w:3});
       addFx({k:'ring', x:z.x, y:z.y, r:z.r*0.4, grow:z.r*2.0, life:0.28, max:0.28, c:'255,255,255', w:2});
@@ -1041,9 +1052,9 @@ function killCell(s){
   var idx=G.cells.indexOf(s);
   if (idx<0) return;
   G.cells.splice(idx,1);
-  // 最后一口气：头顶飘一个 ahhh
-  addFx({k:'txt', x:clamp(s.x+rnd(-6,6), 44, W-44), y:s.y-15, vx:0, vy:0, s:'ahhh',
-         c:'255,150,130', sz:18, life:1.25, max:1.25});
+  // 最后一口气：头顶留一句
+  talkAdd(sayRand()<0.5 ? '为我报仇~~' : '出师未捷~~',
+          s.x, s.y-26, '226,238,252', 16, 1.9, true);
   for (var i=0;i<16;i++){
     var a=rand()*TAU;
     addFx({k:'blood', x:s.x, y:s.y, vx:Math.cos(a)*rnd(50,200), vy:Math.sin(a)*rnd(50,200),
@@ -1303,6 +1314,11 @@ function updateCells(dt){
       addFx({k:'txt', x:clamp(gd.x, 46, W-46), y:gd.y-36, vx:0, vy:0,
              s: sayRand()<0.5 ? '我被缠住了！' : '救我！',
              c:'255,158,138', sz:16, life:1.4, max:1.4});
+    }
+    // 残血：自己喊一句（每个细胞 16 秒最多一次）
+    if (gd.hp < gd.maxHp*0.34 && G.time - (gd.woundT||-99) > 16){
+      gd.woundT = G.time;
+      talkAdd(sayRand()<0.5 ? '快救我' : '视死如归', gd.x, gd.y-32, '255,214,178', 15, 1.7);
     }
 
     // 已经贴到屏障了，还有一股力在往下顶 —— 被墙压住了。
@@ -1730,6 +1746,7 @@ function render(){
   drawShells();
   drawCells();
   drawSayText();        // 台词在某个细胞头顶
+  drawTalks();          // 角色自己的话（谁说话长谁头上）
   drawMarkFly();          // 画在最上层：弹道不能被细胞和病毒盖住
   drawCover();            // 封面页（等玩家点开战）
   drawCharge();           // 开局充能面板
@@ -1912,6 +1929,41 @@ function drawChargeFall(){
     ctx.stroke();
     ctx.restore();
   }
+}
+
+/* ---------- 角色台词：谁说话就长在谁头顶 ---------- */
+function talkAdd(s, x, y, c, sz, life, pri){
+  if (QUIET) return;
+  var T = G.talks || (G.talks = []);
+  for (var i=T.length-1;i>=0;i--) if (G.time-T[i].t0 > T[i].life) T.splice(i,1);
+  if (T.length >= 2) return;                              // 同时最多两句，别糊成一团
+  if (!G.talkOn){ G.talkOn = true; G.talkT = -99; }
+  if (!pri && G.time - G.talkT < 0.9) return;             // 普通台词之间隔一下
+  G.talkT = G.time;
+  T.push({ s:s, x:clamp(x, 54, W-54), y:y, t0:G.time, life:life||1.6, c:c||'236,246,255', sz:sz||15 });
+}
+function drawTalks(){
+  var T = G.talks; if (!T || !T.length) return;
+  ctx.save();
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  for (var i=0;i<T.length;i++){
+    var q=T[i], age=G.time-q.t0;
+    if (age > q.life) continue;
+    var a = age<0.1 ? age/0.1 : (age>q.life-0.4 ? (q.life-age)/0.4 : 1);
+    if (a <= 0) continue;
+    var pop = age<0.1 ? 0.72+0.28*(age/0.1) : 1;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1,a);
+    ctx.translate(q.x, q.y - Math.min(9, age*5));
+    ctx.scale(pop, pop);
+    ctx.font='800 '+(q.sz||15)+'px Bahnschrift SemiCondensed,"Microsoft YaHei",sans-serif';
+    ctx.lineJoin='round'; ctx.lineWidth=3.6; ctx.strokeStyle='rgba(4,8,14,0.9)';
+    ctx.strokeText(q.s, 0, 0);
+    ctx.fillStyle='rgba('+q.c+',1)';
+    ctx.fillText(q.s, 0, 0);
+    ctx.restore();
+  }
+  ctx.restore();
 }
 
 /* ---------- 台词：从一个细胞头顶冒出来 ---------- */
@@ -2490,6 +2542,8 @@ function start(seed){
   G.chargeLanded = 0;
   G.chargeParticles = [];
   G.chargeShake = 0;
+  G.talks = [];
+  G.talkT = -99;
   G.cover = !QUIET;                    // 先停在一张封面页，点"开战"才开始
   G.charging = false;
 
