@@ -41,13 +41,6 @@
     font-family:var(--cn);font-size:26px;font-weight:900;letter-spacing:12px;text-indent:12px;
     color:rgba(226,242,255,.9);text-shadow:0 0 26px rgba(110,190,255,.55),0 2px 14px rgba(0,0,0,.9)}
 
-  #markBtn{position:absolute;z-index:7;width:72px;height:72px;border-radius:50%;cursor:pointer;
-    border:1px solid rgba(120,190,240,.3);background:rgba(12,26,38,.78);color:#9ad4f5;
-    font-family:inherit;font-size:13px;letter-spacing:1.5px;backdrop-filter:blur(8px);
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:.15s}
-  #markBtn:hover{background:rgba(24,52,76,.92);border-color:rgba(120,210,255,.55)}
-  #markBtn:active{transform:scale(.96)}
-  #markBtn small{font-size:11px;letter-spacing:.5px;opacity:.55;font-variant-numeric:tabular-nums}
   #startBtn{position:absolute;left:50%;top:47%;transform:translate(-50%,-50%);z-index:8;display:none;
     font-family:var(--cn);font-size:21px;font-weight:800;letter-spacing:9px;text-indent:9px;
     color:#ffe9c8;background:rgba(34,24,10,.86);border:1px solid rgba(255,181,84,.55);
@@ -55,15 +48,16 @@
     box-shadow:0 0 34px rgba(255,170,60,.20),inset 0 0 24px rgba(255,170,60,.06);
     animation:btnBreath 2.4s ease-in-out infinite}
   #startBtn.on{display:block}
-  #langBtn{position:absolute;left:50%;bottom:13%;transform:translateX(-50%);z-index:9;display:none;
-    font-family:var(--num);font-size:12px;letter-spacing:3px;color:#7fa8c8;background:transparent;
-    border:1px solid rgba(120,190,240,.28);padding:7px 18px;border-radius:0;cursor:pointer}
-  #langBtn.on{display:block}
-  #langBtn:hover{color:#cfeaff;border-color:rgba(120,210,255,.6)}
+  #langBtn{position:absolute;right:12px;bottom:12px;z-index:9;display:flex;align-items:center;
+    border:1px solid rgba(120,190,240,.26);background:rgba(12,26,38,.84);cursor:pointer;
+    font-family:var(--num);font-size:11px;letter-spacing:1px;padding:0;border-radius:0;transition:.15s}
+  #langBtn i{font-style:normal;padding:7px 10px;color:#5f7d94;transition:.15s}
+  #langBtn[data-lang="zh"] i:first-child,
+  #langBtn[data-lang="en"] i:last-child{background:rgba(255,181,84,.18);color:#ffe9c8}
+  #langBtn:hover{border-color:rgba(120,210,255,.5)}
   #startBtn:hover{background:rgba(60,40,12,.95);color:#fff6e2}
   @keyframes btnBreath{0%,100%{box-shadow:0 0 26px rgba(255,170,60,.16),inset 0 0 20px rgba(255,170,60,.05)}
     50%{box-shadow:0 0 46px rgba(255,180,70,.34),inset 0 0 28px rgba(255,170,60,.10)}}
-  #markBtn.cool{opacity:.42;cursor:not-allowed}
 
   #bigup{position:absolute;left:0;right:0;top:24%;z-index:12;text-align:center;pointer-events:none;
     opacity:0;transform:translateY(8px);transition:opacity .22s,transform .22s}
@@ -117,9 +111,8 @@
       <div class="hudline score" id="kc">0 分</div>
     </header>
 
-    <button id="markBtn">抗体<small id="markCd">就绪</small></button>
     <button id="startBtn">开 战</button>
-    <button id="langBtn">EN</button>
+    <button id="langBtn" data-lang="zh"><i>中</i><i>EN</i></button>
 
     <div id="bigup"><div class="a" id="bigupHead">我 方 进 化</div><div class="b" id="bigupText"></div><div class="c" id="bigupSub"></div></div>
 
@@ -238,6 +231,7 @@ var EN = {
   '识别是第一位的。':'Seeing it comes first.',
   '没看见，不等于没有病毒。':'Not seeing it does not mean it is not there.',
   '消灭了一个 5 级变异株！':'Took down a level-5 mutant!',
+  '变异':'MUTATED',
 
   /* ---- 角色台词 ---- */
   '为我报仇~~':'Avenge me~~',
@@ -294,18 +288,17 @@ function T(s){
 /* DOM 上的字：英文时整块换掉（换语言会重载页面，不用做热切换） */
 function applyLang(){
   var g = function(id){ return document.getElementById(id); };
+  var en = (LANG === 'en');
+  document.documentElement.lang = en ? 'en' : 'zh-CN';
+  document.title = en ? 'Immune War' : '免疫战争';
+  if (g('hudtitle')) g('hudtitle').textContent = en ? 'IMMUNE WAR' : '免疫战争';
+  if (g('startBtn')) g('startBtn').textContent = en ? 'START' : '开 战';
+  if (g('hint'))     g('hint').textContent = en ? 'Tap the field to mark a spot'
+                                                : '点战场 = 标记一处，早一步发现';
+  if (g('wv'))       g('wv').textContent = T('第 ' + ((G && G.wave ? G.wave+1 : 1)) + ' 波');
+  if (g('kc'))       g('kc').textContent = T(Math.round((G && G.score) || 0) + ' 分');
   var lb = g('langBtn');
-  if (lb) lb.textContent = LANG === 'en' ? '中文' : 'EN';
-  if (LANG !== 'en') return;
-  document.documentElement.lang = 'en';
-  document.title = 'Immune War';
-  if (g('hudtitle')) g('hudtitle').textContent = 'IMMUNE WAR';
-  if (g('wv'))        g('wv').textContent = 'WAVE 1';
-  if (g('kc'))        g('kc').textContent = '0 PTS';
-  if (g('startBtn'))  g('startBtn').textContent = 'START';
-  if (g('hint'))      g('hint').textContent = 'Tap the field to mark a spot';
-  if (g('bigupHead')) g('bigupHead').textContent = 'OUR EVOLUTION';
-  if (g('markBtn'))   g('markBtn').innerHTML = 'MARK<small id="markCd">READY</small>';
+  if (lb) lb.setAttribute('data-lang', en ? 'en' : 'zh');
 }
 
 function fitStage(){
@@ -714,11 +707,7 @@ function angNorm(a){ while(a>Math.PI) a-=TAU; while(a<-Math.PI) a+=TAU; return a
    背景
    ========================================================= */
 var ground=null, DUST=[];
-function layout(){
-  var fb=document.getElementById('markBtn');
-  fb.style.left=(W-72-14)+'px';
-  fb.style.top =(H-72-14)+'px';
-}
+function layout(){ }
 function resize(){
   fitStage(); layout();
   var r=stageEl.getBoundingClientRect();
@@ -925,7 +914,6 @@ function beginBattle(){
   G.chargeParticles = []; G.chargeShake = 0;
   if (!QUIET){
     var sb=document.getElementById('startBtn'); if (sb) sb.className='';
-    var lbb=document.getElementById('langBtn'); if (lbb) lbb.className='';
   }
 }
 
@@ -975,8 +963,7 @@ function update(dt){
         var hi=document.getElementById('hint');
         hi.classList.add('on');
         setTimeout(function(){ hi.classList.remove('on'); }, 7000);
-        var mb=document.getElementById('markBtn'); if (mb) mb.style.display='';
-      }
+          }
     }
     return;
   }
@@ -1809,12 +1796,6 @@ function syncHUD(){
     document.getElementById('kc').textContent = T(sc+' 分');
   }
 
-  var fb=document.getElementById('markBtn');
-  var cd=document.getElementById('markCd');
-  var ammo=0;
-  for (var ai=0;ai<G.cells.length;ai++) ammo += G.cells[ai].marks;
-  fb.className = ammo>0 ? '' : 'cool';
-  cd.textContent = ammo>0 ? T(ammo+' 枚') : T('无弹');
 }
 
 function gameOver(){
@@ -1829,7 +1810,6 @@ function gameOver(){
                  steps:G.steps, ranks:(G.ranks||[]).slice() };
   if (G.wave>best){ best=G.wave; try{ localStorage.setItem('immune_best', String(best)); }catch(e){} }
   document.getElementById('hud').style.display='none';
-  document.getElementById('markBtn').style.display='none';
   document.getElementById('bigup').classList.remove('on');
   // 结算页一出现，横幅和提示就必须立刻消失，不能淡出时压在结算文字上
   var _hi=document.getElementById('hint'); _hi.classList.remove('on'); _hi.style.display='none';
@@ -2643,13 +2623,6 @@ function toWorld(e){
   var r=cv.getBoundingClientRect();
   return { x:(e.clientX-r.left)/r.width*W, y:(e.clientY-r.top)/r.height*H };
 }
-function inMarkBtn(p){
-  var b=document.getElementById('markBtn').getBoundingClientRect();
-  var s=stageEl.getBoundingClientRect();
-  var bx=(b.left-s.left)/s.width*W, by=(b.top-s.top)/s.height*H;
-  var bw=b.width/s.width*W, bh=b.height/s.height*H;
-  return p.x>bx && p.x<bx+bw && p.y>by && p.y<by+bh;
-}
 cv.addEventListener('pointerdown', function(e){
   if (G.phase==='over'){
     if (EVO && !EVO.done) return;          // 正在后台进化，先别点
@@ -2659,15 +2632,10 @@ cv.addEventListener('pointerdown', function(e){
   }
   if (G.phase!=='play') return;
   var q=toWorld(e);
-  if (inMarkBtn(q)) return;
   throwMark(q.x, q.y);
 });
 
 
-document.getElementById('markBtn').addEventListener('click', function(e){
-  e.stopPropagation();
-  throwMark();
-});
 document.addEventListener('keydown', function(e){
     if (G.cover && (e.key==='Enter'||e.key===' ')){ e.preventDefault(); beginBattle(); return; }
   if (G.phase==='over' && (e.key==='Enter'||e.key===' ')){ e.preventDefault(); start(); }
@@ -2739,9 +2707,7 @@ function start(seed){
 
   if (!QUIET){
     document.getElementById('hud').style.display='';
-    document.getElementById('markBtn').style.display='none';
     var sb0=document.getElementById('startBtn'); if (sb0) sb0.className='on';
-    var lb0=document.getElementById('langBtn'); if (lb0) lb0.className='on';
     document.getElementById('hint').style.display='';
   }
 
@@ -2986,11 +2952,12 @@ syncCarry();
 applyLang();
 
 var _langBtn=document.getElementById('langBtn');
-if (_langBtn) _langBtn.addEventListener('click', function(){
-  var to = LANG==='en' ? 'zh' : 'en';
-  try{ localStorage.setItem('iw_lang', to); }catch(e){}
-  var u = new URL(location.href); u.searchParams.set('lang', to);
-  location.href = u.href;
+if (_langBtn) _langBtn.addEventListener('click', function(e){
+  e.stopPropagation();
+  LANG = (LANG==='en') ? 'zh' : 'en';
+  try{ localStorage.setItem('iw_lang', LANG); }catch(e){}
+  applyLang();
+  if (typeof render === 'function' && G.phase !== 'intro') render();
 });
 
 var _startBtn2=document.getElementById('startBtn');
