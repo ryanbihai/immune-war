@@ -55,6 +55,11 @@
     box-shadow:0 0 34px rgba(255,170,60,.20),inset 0 0 24px rgba(255,170,60,.06);
     animation:btnBreath 2.4s ease-in-out infinite}
   #startBtn.on{display:block}
+  #langBtn{position:absolute;left:50%;bottom:13%;transform:translateX(-50%);z-index:9;display:none;
+    font-family:var(--num);font-size:12px;letter-spacing:3px;color:#7fa8c8;background:transparent;
+    border:1px solid rgba(120,190,240,.28);padding:7px 18px;border-radius:0;cursor:pointer}
+  #langBtn.on{display:block}
+  #langBtn:hover{color:#cfeaff;border-color:rgba(120,210,255,.6)}
   #startBtn:hover{background:rgba(60,40,12,.95);color:#fff6e2}
   @keyframes btnBreath{0%,100%{box-shadow:0 0 26px rgba(255,170,60,.16),inset 0 0 20px rgba(255,170,60,.05)}
     50%{box-shadow:0 0 46px rgba(255,180,70,.34),inset 0 0 28px rgba(255,170,60,.10)}}
@@ -114,6 +119,7 @@
 
     <button id="markBtn">抗体<small id="markCd">就绪</small></button>
     <button id="startBtn">开 战</button>
+    <button id="langBtn">EN</button>
 
     <div id="bigup"><div class="a" id="bigupHead">我 方 进 化</div><div class="b" id="bigupText"></div><div class="c" id="bigupSub"></div></div>
 
@@ -135,6 +141,172 @@ var stageEl = document.getElementById('stage');
 var cv = document.getElementById('cv');
 var ctx = cv.getContext('2d');
 stageEl.style.aspectRatio = W + ' / ' + H;
+
+/* =========================================================
+   多语言
+   中文是原文；英文走下面这张表。
+   画布上的字统一在 fillText / strokeText 里翻，DOM 上的字在赋值处翻。
+   ========================================================= */
+var LANG = 'zh';
+(function(){
+  try{
+    var m = /[?&]lang=(en|zh)/.exec(location.search);
+    if (m) LANG = m[1];
+    else { var sv = localStorage.getItem('iw_lang'); if (sv==='en'||sv==='zh') LANG = sv; }
+  }catch(e){}
+})();
+
+var EN = {
+  /* ---- 界面 ---- */
+  '免疫战争':'IMMUNE WAR',
+  '免疫战争 · 好啦科技':'Immune War · Haola Tech',
+  '抗体':'MARK',
+  '就绪':'READY',
+  '无弹':'EMPTY',
+  '开 战':'START',
+  '点战场 = 标记一处，早一步发现':'Tap the field to mark a spot',
+  '用步数增强你的战士！':'Turn your steps into stronger fighters!',
+  '我 方 进 化':'OUR EVOLUTION',
+  '新 毒 株':'NEW STRAIN',
+
+  /* ---- 结算 ---- */
+  '这 一 局':'THIS RUN',
+  '撑住（秒）':'HELD (s)',
+  '趁没变异':'PRE-MUTATION',
+  '大部分病毒在变异之前就被消灭了':'Most were killed before they mutated',
+  '有些病毒挨到变异之后才被消灭':'Some were killed only after mutating',
+  '太多病毒是变异之后才被消灭的':'Too many mutated before they died',
+  '免疫系统正在调整…':'The immune system is adapting…',
+  '再 打 一 轮':'PLAY AGAIN',
+
+  /* ---- 毒株 ---- */
+  '绿株':'GREEN',
+  '复制最快 · 最不经打':'Fastest to copy · weakest armor',
+  '蓝株':'BLUE',
+  '耐打 1.5 倍 · 打得更狠':'1.5x tougher · hits harder',
+  '紫株':'PURPLE',
+  '耐打 2 倍 · 打得最狠':'2x tougher · hits hardest',
+  '橙株':'ORANGE',
+  '耐打 2 倍 · 打爆再冒两个':'2x tougher · splits in two',
+
+  /* ---- 每波的进化方向 ---- */
+  '提前拦截':'Intercept early',
+  '打在它前面':'Shoot where it will be',
+  '铺开成网':'Spread wide',
+  '不留死角':'No blind spots',
+  '迎上去':'Push forward',
+  '不让它靠近':'Keep them off',
+  '边退边打':'Kite back',
+  '不硬吃':'Take no hits',
+  '先打眼前的':'Hit the nearest',
+  '别让它漏过去':'Do not let it slip',
+  '先打残血的':'Finish the wounded',
+  '别让它喘气':'No breathing room',
+  '不漏一个':'Hold your post',
+  '守住自己那段':'Cover your lane',
+  '拉开层次':'Layer up',
+  '前后两排':'Two ranks deep',
+
+  /* ---- 字幕 ---- */
+  '早识别，比什么都重要。':'Spotting it early beats everything.',
+  '看住入侵口。早一秒都好。':'Watch the breach. One second counts.',
+  '它要过去，先过我们这关。':'To get through, it goes through us.',
+  '拖得越久，越难消灭。':'The longer it waits, the harder it dies.',
+  '不能再拖了。':'We cannot wait any longer.',
+  '时间不站在我们这边。':'Time is not on our side.',
+  '新毒株。别等它变异。':'New strain. Do not wait for it to mutate.',
+  '又一种。先消灭它。':'Another kind. Kill it first.',
+  '新毒株，更耐打。':'New strain. Tougher.',
+  '它变异了。耐打多了。':'It mutated. Far tougher now.',
+  '晚了。现在更难消灭。':'Too late. Much harder now.',
+  '太大了。现在要打很久。':'It is huge. This will take a while.',
+  '太耐打了。全力。':'Too tough. All guns.',
+  '再不打，就消灭不了了。':'If we do not hit it now, we never will.',
+  '早一秒，少一半攻击。':'One second earlier, half the damage.',
+  '就是这样。趁它还没变异。':'That is it. Before it mutates.',
+  '早消灭一个，后面少挨十下。':'One early kill saves ten hits.',
+  '不能让它扩散。':'Do not let it spread.',
+  '只剩我们几个了。':'Only a few of us left.',
+  '守住这一片。':'Hold this ground.',
+  '了不起。一个都没变异。':'Not one of them mutated.',
+  '这一波，全消灭了。':'Wave cleared.',
+  '下次，别等它变异。':'Next time, hit it before it mutates.',
+  '记住：早识别。':'Remember: see it early.',
+  '下次，早一点。':'Next time, sooner.',
+  '朝没标记的地方扔抗体！':'Mark the dark spots!',
+  '没标记，就打不到。':'Unmarked means unhittable.',
+  '识别是第一位的。':'Seeing it comes first.',
+  '没看见，不等于没有病毒。':'Not seeing it does not mean it is not there.',
+  '消灭了一个 5 级变异株！':'Took down a level-5 mutant!',
+
+  /* ---- 角色台词 ---- */
+  '为我报仇~~':'Avenge me~~',
+  '出师未捷~~':'Unfinished...~~',
+  '快救我':'Save me!',
+  '视死如归':'Ready to die',
+  '别看到我':'Do not look at me',
+  '偷偷发育一会儿':'Just let me grow',
+  '让你看看力量！':'Behold my power!',
+  '我被缠住了！':'I am surrounded!',
+  '救我！':'Help!',
+  '别管我':'Leave me',
+  '顶住。':'Hold on.',
+  '被打穿了。':'Pierced.',
+  '别让它碰到你。':'Do not let it touch you.',
+
+  /* ---- 进化 ---- */
+  '这套打法进步了':'New tactics learned',
+  '病毒也换了新招':'The virus adapted too',
+  '这一盘双方都没什么长进':'Nobody learned much'
+};
+
+/* 带数字的句子，用模式匹配 */
+var ENP = [
+  [/^第 (\d+) 波$/,            function(m){ return 'WAVE '+m[1]; }],
+  [/^第 (\d+) 关$/,            function(m){ return 'WAVE '+m[1]; }],
+  [/^(\d+) 分$/,               function(m){ return m[1]+' PTS'; }],
+  [/^(\d+) 枚$/,               function(m){ return m[1]; }],
+  [/^今日 ([\d,]+) 步，总军衔 = (\d+)$/, function(m){ return 'Today '+m[1]+' steps · ranks '+m[2]; }],
+  [/^今日 ([\d,]+) 步 · 全队 (\d+) 道杠$/, function(m){ return m[1]+' steps · squad '+m[2]+' chevrons'; }],
+  [/^闯过 (\d+) 关$/,          function(m){ return 'Reached wave '+m[1]; }],
+  [/^消灭 (\d+) 个病毒$/,       function(m){ return m[1]+' viruses destroyed'; }],
+  [/^最好成绩：第 (\d+) 关$/,   function(m){ return 'Best: wave '+m[1]; }]
+];
+
+function T(s){
+  if (LANG !== 'en' || typeof s !== 'string') return s;
+  var e = EN[s];
+  if (e !== undefined) return e;
+  for (var i=0;i<ENP.length;i++){
+    var m = ENP[i][0].exec(s);
+    if (m) return ENP[i][1](m);
+  }
+  return s;
+}
+
+/* 画布上所有的字都从这里过一遍 */
+(function(){
+  var ft = ctx.fillText, st = ctx.strokeText;
+  ctx.fillText   = function(s,x,y,mw){ return ft.call(ctx, T(s), x, y, mw); };
+  ctx.strokeText = function(s,x,y,mw){ return st.call(ctx, T(s), x, y, mw); };
+})();
+
+/* DOM 上的字：英文时整块换掉（换语言会重载页面，不用做热切换） */
+function applyLang(){
+  var g = function(id){ return document.getElementById(id); };
+  var lb = g('langBtn');
+  if (lb) lb.textContent = LANG === 'en' ? '中文' : 'EN';
+  if (LANG !== 'en') return;
+  document.documentElement.lang = 'en';
+  document.title = 'Immune War';
+  if (g('hudtitle')) g('hudtitle').textContent = 'IMMUNE WAR';
+  if (g('wv'))        g('wv').textContent = 'WAVE 1';
+  if (g('kc'))        g('kc').textContent = '0 PTS';
+  if (g('startBtn'))  g('startBtn').textContent = 'START';
+  if (g('hint'))      g('hint').textContent = 'Tap the field to mark a spot';
+  if (g('bigupHead')) g('bigupHead').textContent = 'OUR EVOLUTION';
+  if (g('markBtn'))   g('markBtn').innerHTML = 'MARK<small id="markCd">READY</small>';
+}
 
 function fitStage(){
   var ar = W/H;
@@ -753,6 +925,7 @@ function beginBattle(){
   G.chargeParticles = []; G.chargeShake = 0;
   if (!QUIET){
     var sb=document.getElementById('startBtn'); if (sb) sb.className='';
+    var lbb=document.getElementById('langBtn'); if (lbb) lbb.className='';
   }
 }
 
@@ -1497,10 +1670,15 @@ function nextWave(){
   G.tac[dir.k] = Math.min(dir.hi, G.tac[dir.k] + dir.v);
   queueBanner('我 方 进 化', dir.t, dir.d);
   sfx.up();
-  if (!QUIET) document.getElementById('wv').textContent='第 '+(G.wave+1)+' 波';
+  if (!QUIET) document.getElementById('wv').textContent=T('第 '+(G.wave+1)+' 波');
   if (G.wave%4===0) say('wave',12);
 }
-var BANNER_Q=[], BANNER_ON=false;
+var BANNER_Q=[], BANNER_ON=false, BANNER_T=0;
+function clearBanners(){
+  BANNER_Q.length = 0; BANNER_ON = false;
+  if (BANNER_T){ clearTimeout(BANNER_T); BANNER_T = 0; }
+  var el=document.getElementById('bigup'); if (el) el.className='';
+}
 function queueBanner(head, main, sub, red){
   if (QUIET || !main) return;
   BANNER_Q.push({ h:head||'', m:main, s:sub||'', r:!!red });
@@ -1511,13 +1689,13 @@ function nextBanner(){
   BANNER_ON=true;
   var b=BANNER_Q.shift();
   var el=document.getElementById('bigup');
-  document.getElementById('bigupHead').textContent=b.h;
-  document.getElementById('bigupText').textContent=b.m;
-  document.getElementById('bigupSub').textContent=b.s;
+  document.getElementById('bigupHead').textContent=T(b.h);
+  document.getElementById('bigupText').textContent=T(b.m);
+  document.getElementById('bigupSub').textContent=T(b.s);
   el.className = 'on' + (b.r ? ' red' : '');
-  setTimeout(function(){
+  BANNER_T = setTimeout(function(){
     el.className='';
-    setTimeout(nextBanner, 240);
+    BANNER_T = setTimeout(nextBanner, 240);
   }, b.s ? 2100 : 1700);
 }
 /* =========================================================
@@ -1628,7 +1806,7 @@ function syncHUD(){
   var sc=Math.round(G.score);
   if (G._scShown !== sc){
     G._scShown = sc;
-    document.getElementById('kc').textContent = sc+' 分';
+    document.getElementById('kc').textContent = T(sc+' 分');
   }
 
   var fb=document.getElementById('markBtn');
@@ -1636,11 +1814,12 @@ function syncHUD(){
   var ammo=0;
   for (var ai=0;ai<G.cells.length;ai++) ammo += G.cells[ai].marks;
   fb.className = ammo>0 ? '' : 'cool';
-  cd.textContent = ammo>0 ? (ammo+' 枚') : '无弹';
+  cd.textContent = ammo>0 ? T(ammo+' 枚') : T('无弹');
 }
 
 function gameOver(){
   G.phase='over';
+  clearBanners();
   G.shake=0;
   // 训练对局不写最高纪录，也不碰结算数据 —— 否则后台进化会把玩家看到的数字改掉
   if (QUIET) { G.overBtn=null; return; }
@@ -1849,12 +2028,13 @@ function drawMarks(){
       ctx.globalAlpha=Math.max(0,al)*0.92;
       ctx.translate(f.x, f.y - 6 - q*10);
       ctx.scale(sc,sc);
-      ctx.font='900 56px "Microsoft YaHei",Bahnschrift SemiCondensed,sans-serif';
+      var mgl = LANG==='en' ? 'MARK' : '标';
+      ctx.font='900 '+(LANG==='en'?30:56)+'px "Microsoft YaHei",Bahnschrift SemiCondensed,sans-serif';
       ctx.textAlign='center'; ctx.textBaseline='middle';
       ctx.fillStyle='rgba(90,40,10,0.55)';
-      ctx.fillText('标', 1.5, 2);
+      ctx.fillText(mgl, 1.5, 2);
       ctx.fillStyle='rgba(255,238,196,0.98)';
-      ctx.fillText('标', 0, 0);
+      ctx.fillText(mgl, 0, 0);
       ctx.restore();
     }
   }
@@ -1982,7 +2162,7 @@ function drawSayText(){
 
   ctx.save();
   ctx.font='700 15px Bahnschrift SemiCondensed,"Microsoft YaHei",sans-serif';
-  var w=ctx.measureText(S.s).width;
+  var w=ctx.measureText(T(S.s)).width;
   var x=clamp(S.cell.x, w/2+16, W-w/2-16);
   var y=S.cell.y-58;
   ctx.textAlign='center'; ctx.textBaseline='middle';
@@ -2545,6 +2725,7 @@ function start(seed){
   G.chargeShake = 0;
   G.talks = [];
   G.talkT = -99;
+  clearBanners();
   G.cover = !QUIET;                    // 先停在一张封面页，点"开战"才开始
   G.charging = false;
 
@@ -2560,10 +2741,11 @@ function start(seed){
     document.getElementById('hud').style.display='';
     document.getElementById('markBtn').style.display='none';
     var sb0=document.getElementById('startBtn'); if (sb0) sb0.className='on';
+    var lb0=document.getElementById('langBtn'); if (lb0) lb0.className='on';
     document.getElementById('hint').style.display='';
   }
 
-  document.getElementById('wv').textContent='第 1 波';
+  document.getElementById('wv').textContent=T('第 1 波');
   G._scShown = null;
   sayClear();
   syncHUD();
@@ -2790,7 +2972,8 @@ function evoFinish(){
   syncCarry();
   ACTIVE_TAC=cloneTac(DNA.player);
   ENEMY_ACTIVE=cloneEnemy(DNA.enemy);
-  G.evoNote='第 '+DNA.gen+' 代 · '+(notes.length?notes.join(' · '):'这一盘双方都没什么长进');
+  G.evoNote=(LANG==='en'?'Gen '+DNA.gen+' · ':'第 '+DNA.gen+' 代 · ')+
+            (notes.length?notes.map(function(n){return T(n);}).join(' · '):T('这一盘双方都没什么长进'));
   // 训练把 G 换成了某一局对局，这里必须还回去，
   // 否则结算页会闪一下然后变成"一局敌人堆在顶部"的游戏画面。
   G.phase='over';
@@ -2800,6 +2983,15 @@ function evoFinish(){
 
 dnaLoad();
 syncCarry();
+applyLang();
+
+var _langBtn=document.getElementById('langBtn');
+if (_langBtn) _langBtn.addEventListener('click', function(){
+  var to = LANG==='en' ? 'zh' : 'en';
+  try{ localStorage.setItem('iw_lang', to); }catch(e){}
+  var u = new URL(location.href); u.searchParams.set('lang', to);
+  location.href = u.href;
+});
 
 var _startBtn2=document.getElementById('startBtn');
 if (_startBtn2) _startBtn2.addEventListener('click', function(){ beginBattle(); });

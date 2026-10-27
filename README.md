@@ -63,6 +63,14 @@
 - 每打完一局，敌我双方各试几个"战术变异体"，赢的那个留下并写进 localStorage ——
   下一局从更强的状态开始，越打越难，也越打越强。
 
+## English
+
+`index.html?lang=en`，或者点封面页底部的 `EN` 按钮。
+
+界面、字幕、角色台词、结算页全部有英文版；选择会记在 localStorage 里，下次打开还是英文。
+
+`Lang` is switchable: `?lang=en`, or the `EN` button on the cover. The choice is remembered.
+
 ## 说明
 
 这是个比喻，不是免疫学教材。真实的识别靠分子不靠眼睛，真实的过程比这复杂得多。
