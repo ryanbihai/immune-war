@@ -2616,7 +2616,7 @@ function drawOver(){
   for (var q=0;q<5;q++) total+=ks[q];
   var early = total? Math.round(ks[0]/total*100):0;
   var stages = D.wave+1;
-  var cy = PORTRAIT ? H*0.30 : H*0.26;
+  var cy = PORTRAIT ? H*0.32 : H*0.26;
 
   // ── 主标题 ──
   ctx.textAlign='center';
@@ -2636,45 +2636,28 @@ function drawOver(){
   ctx.font='600 22px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
   ctx.fillText('消灭 '+D.killed+' 个病毒', W/2, cy+96);
 
-  // ── 两项关键数据 ──
-  var sy = cy+150;
-  ctx.fillStyle='rgba(255,181,84,0.22)';
-  ctx.fillRect(W/2-120, sy-16, 240, 1);
-  ctx.fillStyle='#ffe9c8';
-  ctx.font='700 26px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
-  ctx.fillText((D.sec || 0).toFixed(0), W/2-56, sy+16);
-  ctx.fillStyle='#8fd6ff';
-  ctx.fillText(early+'%', W/2+56, sy+16);
-  ctx.fillStyle='#5f7d94';
-  ctx.font='600 13px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
-  ctx.fillText('撑住（秒）', W/2-56, sy+34);
-  ctx.fillText('趁没变异', W/2+56, sy+34);
-
-  // ── 一句评价：这一局你是"趁小"还是"养大了才打" ──
-  var verdict = early>=62 ? '大部分病毒在变异之前就被消灭了'
-              : early>=40 ? '有些病毒挨到变异之后才被消灭'
-                          : '太多病毒是变异之后才被消灭的';
-  ctx.fillStyle = early>=62 ? '#7de0b0' : (early>=40 ? '#e8c98a' : '#e08a7d');
-  ctx.font='600 15px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
-  ctx.fillText(verdict, W/2, sy+64);
-
+  // ── 小贴士：一局一句，放大 ──
+  var ty = cy + 176;
   if (D.tip){
-    ctx.fillStyle='rgba(140,178,208,0.95)';
-    ctx.font='500 14px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
-    ctx.fillText('· '+T(D.tip)+' ·', W/2, sy+90);
-  }
-
-  ctx.fillStyle='#4a6478';
-  ctx.font='500 14px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
-  ctx.fillText('最好成绩：第 '+(best+1)+' 关', W/2, sy+116);
-  if (G.evoNote){
-    ctx.fillStyle='#7de0b0';
-    ctx.font='600 14px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
-    ctx.fillText(G.evoNote, W/2, sy+140);
-  } else if (EVO && !EVO.done){
-    ctx.fillStyle='#4a6478';
-    ctx.font='500 14px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
-    ctx.fillText('免疫系统正在调整…', W/2, sy+140);
+    var tipTxt = '· ' + T(D.tip) + ' ·';
+    ctx.fillStyle='rgba(178,210,236,0.95)';
+    ctx.font='600 19px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+    var maxW = W - 80;
+    if (ctx.measureText(tipTxt).width <= maxW){
+      ctx.fillText(tipTxt, W/2, ty);
+    } else {
+      // 太长就折两行（英文常见）
+      var mid = Math.floor(tipTxt.length/2), cut = -1;
+      for (var ci=0; ci<tipTxt.length; ci++){
+        var ch = tipTxt.charAt(ci);
+        if (ch===' '||ch==='，'||ch==='、'||ch==='—'||ch==='·'){
+          if (cut<0 || Math.abs(ci-mid) < Math.abs(cut-mid)) cut = ci;
+        }
+      }
+      if (cut<0) cut = mid;
+      ctx.fillText(tipTxt.slice(0,cut+1).trim(), W/2, ty-17);
+      ctx.fillText(tipTxt.slice(cut+1).trim(), W/2, ty+17);
+    }
   }
 
   var bw2=230, bh2=52;
