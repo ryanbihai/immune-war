@@ -1,0 +1,2782 @@
+<!doctype html>
+<!--
+  免疫战争 (Immune War)
+  一个单文件的竖屏塔防小游戏：用「早期识别、早期消灭」讲清楚为什么要早发现。
+
+  Copyright (c) 2026 好啦科技
+  以 MIT 许可发布 —— 转载、修改、二次开发都可以，但请保留这段声明和 LICENSE 文件。
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<title>免疫战争</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{
+    height:100%;background:#03050a;color:#e8eef4;overflow:hidden;user-select:none;
+    font-family:"PingFang SC","HarmonyOS Sans SC","Microsoft YaHei",-apple-system,system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  #app{position:fixed;inset:0;display:grid;place-items:center;padding:6px}
+  #stage{position:relative;overflow:hidden;border-radius:14px;background:#04060b;
+    box-shadow:0 30px 90px rgba(0,0,0,.85),0 0 0 1px rgba(110,150,190,.12)}
+  canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+
+  #hud{position:absolute;left:0;right:0;top:0;z-index:5;padding:11px 15px 0;
+    display:flex;align-items:flex-start;justify-content:space-between;gap:12px;pointer-events:none}
+  /* HUD 底下压一层暗角，病毒从上方下来也不会盖住数字 */
+  #hud::before{content:"";position:absolute;left:0;right:0;top:0;height:92px;
+    background:linear-gradient(180deg,rgba(3,6,11,.9),rgba(3,6,11,0))}
+  #hud>*{position:relative}
+
+  .hudline{position:relative;font-family:var(--num);font-weight:800;font-size:17px;
+    letter-spacing:1px;line-height:1;color:#eaf4ff;font-variant-numeric:tabular-nums;
+    text-shadow:0 0 22px rgba(120,200,255,.4),0 2px 10px rgba(0,0,0,.95)}
+  .hudline::after{content:"";position:absolute;left:0;right:0;bottom:-7px;height:1px;
+    background:linear-gradient(90deg,rgba(255,181,84,.9),rgba(255,181,84,0))}
+  .hudline.score{color:#ffe9c8;text-align:right}
+  .hudline.score::after{background:linear-gradient(270deg,rgba(255,181,84,.9),rgba(255,181,84,0))}
+  #hudtitle{position:absolute;left:0;right:0;top:2px;text-align:center;pointer-events:none;
+    font-family:var(--cn);font-size:26px;font-weight:900;letter-spacing:12px;text-indent:12px;
+    color:rgba(226,242,255,.9);text-shadow:0 0 26px rgba(110,190,255,.55),0 2px 14px rgba(0,0,0,.9)}
+
+  #markBtn{position:absolute;z-index:7;width:72px;height:72px;border-radius:50%;cursor:pointer;
+    border:1px solid rgba(120,190,240,.3);background:rgba(12,26,38,.78);color:#9ad4f5;
+    font-family:inherit;font-size:13px;letter-spacing:1.5px;backdrop-filter:blur(8px);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:.15s}
+  #markBtn:hover{background:rgba(24,52,76,.92);border-color:rgba(120,210,255,.55)}
+  #markBtn:active{transform:scale(.96)}
+  #markBtn small{font-size:11px;letter-spacing:.5px;opacity:.55;font-variant-numeric:tabular-nums}
+  #startBtn{position:absolute;left:50%;top:47%;transform:translate(-50%,-50%);z-index:8;display:none;
+    font-family:var(--cn);font-size:21px;font-weight:800;letter-spacing:9px;text-indent:9px;
+    color:#ffe9c8;background:rgba(34,24,10,.86);border:1px solid rgba(255,181,84,.55);
+    padding:15px 44px;border-radius:0;cursor:pointer;
+    box-shadow:0 0 34px rgba(255,170,60,.20),inset 0 0 24px rgba(255,170,60,.06);
+    animation:btnBreath 2.4s ease-in-out infinite}
+  #startBtn.on{display:block}
+  #startBtn:hover{background:rgba(60,40,12,.95);color:#fff6e2}
+  @keyframes btnBreath{0%,100%{box-shadow:0 0 26px rgba(255,170,60,.16),inset 0 0 20px rgba(255,170,60,.05)}
+    50%{box-shadow:0 0 46px rgba(255,180,70,.34),inset 0 0 28px rgba(255,170,60,.10)}}
+  #markBtn.cool{opacity:.42;cursor:not-allowed}
+
+  #bigup{position:absolute;left:0;right:0;top:24%;z-index:12;text-align:center;pointer-events:none;
+    opacity:0;transform:translateY(8px);transition:opacity .22s,transform .22s}
+  #bigup.on{opacity:1;transform:translateY(0)}
+  #bigup .a{font-size:13px;letter-spacing:7px;color:#7fa8c8;margin-bottom:6px}
+  #bigup .b{font-size:29px;letter-spacing:4px;font-weight:800;color:#eaf6ff;
+    text-shadow:0 0 40px rgba(120,200,255,.6),0 4px 22px rgba(0,0,0,.95)}
+  #bigup.red .b{color:#ff9d9d;text-shadow:0 0 44px rgba(255,90,90,.6),0 4px 20px rgba(0,0,0,.9)}
+  #bigup.red .c{color:#f0c0ae}
+  #bigup .c{font-size:15px;letter-spacing:3px;font-weight:600;color:#8fb6d0;margin-top:9px;
+    text-shadow:0 2px 14px rgba(0,0,0,.95)}
+
+
+  .ov{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;padding:26px;
+    overflow-y:auto;
+    background:radial-gradient(ellipse at 50% 44%,#0a141e,#03050a 72%)}
+  .ov.hide{display:none}
+  .ov h1{font-family:var(--cn);font-size:42px;letter-spacing:15px;font-weight:900;color:#f4faff;
+    text-indent:15px;
+    text-shadow:0 0 46px rgba(110,190,255,.55),0 0 110px rgba(110,190,255,.26)}
+  .ov h2{font-family:var(--cn);font-size:9.5px;letter-spacing:9px;color:rgba(255,181,84,.75);
+    margin-top:13px;font-weight:700;text-indent:9px}
+  .ov p{font-family:var(--cn);font-size:12px;color:#8aa6bd;line-height:1.9;margin-top:14px;max-width:360px}
+
+
+  #hint{position:absolute;left:0;right:0;bottom:132px;z-index:6;text-align:center;
+    font-family:var(--cn);font-size:13px;color:#5a7a92;letter-spacing:2px;pointer-events:none;
+    opacity:0;transition:opacity .5s}
+  #hint.on{opacity:1}
+
+  /* 横屏/矮窗口：开场压缩排版，否则会被裁掉 */
+  @media (min-aspect-ratio: 1/1), (max-height: 720px){
+    .ov{padding:16px 20px}
+    .ov h1{font-size:31px;letter-spacing:11px;text-indent:11px}
+    .ov h2{font-size:9px;margin-top:7px;letter-spacing:7px}
+    .ov p{font-size:11px;line-height:1.7;margin-top:8px;max-width:560px}
+  }
+
+
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="cv"></canvas>
+
+    <header id="hud">
+      <div class="hudline" id="wv">第 1 波</div>
+      <div id="hudtitle">免疫战争</div>
+      <div class="hudline score" id="kc">0 分</div>
+    </header>
+
+    <button id="markBtn">抗体<small id="markCd">就绪</small></button>
+    <button id="startBtn">开 战</button>
+
+    <div id="bigup"><div class="a" id="bigupHead">我 方 进 化</div><div class="b" id="bigupText"></div><div class="c" id="bigupSub"></div></div>
+
+    <div id="hint">点战场 = 标记一处，早一步发现</div>
+
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+var PORTRAIT = window.innerHeight >= window.innerWidth;
+var W = PORTRAIT ? 620 : 960;
+var H = PORTRAIT ? 900 : 600;
+var TAU = Math.PI*2;
+
+var stageEl = document.getElementById('stage');
+var cv = document.getElementById('cv');
+var ctx = cv.getContext('2d');
+stageEl.style.aspectRatio = W + ' / ' + H;
+
+function fitStage(){
+  var ar = W/H;
+  var vw = window.innerWidth - 12, vh = window.innerHeight - 12;
+  var w = Math.min(vw, vh*ar);
+  stageEl.style.width = Math.round(w)+'px';
+  stageEl.style.height = Math.round(w/ar)+'px';
+}
+fitStage();
+
+var TOP_EDGE = 82;
+var LINE_Y = H - 74;
+
+/* =========================================================
+   确定性随机 + 无渲染模式
+   同一 seed ⇒ 同一局。遗传算法全靠这个才能比较两代战术。
+   ========================================================= */
+var HEADLESS = /[?&]headless=1/.test(location.search);
+var QUIET = HEADLESS;   // 训练/实验室期间静音 + 不写 DOM
+var _rs = 0x9e3779b9;
+var _rsBase = 0x9e3779b9;
+function rand(){
+  _rs = (_rs + 0x6D2B79F5)|0;
+  var t = Math.imul(_rs ^ (_rs>>>15), 1|_rs);
+  t = (t + Math.imul(t ^ (t>>>7), 61|t)) ^ t;
+  return ((t ^ (t>>>14))>>>0) / 4294967296;
+}
+function seedRng(s){
+  _rsBase = ((s|0) || 0x9e3779b9);
+  _rs = _rsBase;
+  rand(); rand(); rand();          // 抖三下，相邻种子不会开出相似序列
+}
+
+/* =========================================================
+   配置
+   ========================================================= */
+var CFG = {
+  squad: 12,
+  soldierHp: 170,
+  soldierDmg: 7,
+  soldierRate: 0.26,
+  soldierSpeed: 88,
+  bulletSpeed: 1250,
+  keepAway: 95,          // 细胞的保命距离：病毒进来就后撤（放风筝）
+
+  // ---- 开发开关 ----
+  auction: true,         // L1 拍卖分派：谁打哪只病毒（关掉就是旧的"各打各的"）
+  gateGuard: 3,          // 守门席位：固定 N 个细胞顶在入侵口，不参与分派
+  needK: 1.7,            // 一只病毒派几个细胞：hp / (单细胞DPS × needK)，越大派人越少
+  gateW: 150,            // 顶部入侵口宽度，病毒全部从这里进来
+  waveEnterSec: 5,       // 每一批必须在这么多秒内全部进入战场（越短越热闹）
+  spawnMaxGap: 0.22,     // 但小批次不用等满：两个之间最多隔这么久
+  splitMax: 2,           // 一只橙株最多分裂几次
+  orangePerWave: 6,     // 一关内最多出现几只橙株（含分裂出来的）
+  orangeInList: 3,      // 名单里最多直接放几只橙株，剩下靠分裂补
+  flarePerSoldier: 1,   // 每个细胞每关带几枚抗体
+  autoFlareGap: 2.2,    // 两个细胞自动投弹之间至少隔这么久
+
+  hold: 0.22,
+
+
+  chew: 0.8,
+
+  // 每一级要活多久（秒）。纯计时，跟有没有被标记无关 ——
+  // 你不看它，它也在变异。光只决定"能不能选中它"。
+  lvDur: [8.0, 9.0, 11.0, 13.0, 15.0],
+  pressN: 1, pressHp: 1, pressGap: 1,   // 难度乘数
+  hpK: 1.2,              // 单只病毒的耐久补偿：总数曲线换掉之后，靠这个把压力拉回来
+  dmgK: 1.25,            // 单只病毒的打人伤害补偿（场上敌人变少，打得不狠就没人怕它）
+  spK: 1.35,             // 病毒移速补偿（场上敌人变少，走得慢就没人怕它）
+  flareR: 133,
+  flareDur: 3.6,
+  markCd: 12
+};
+
+/* ---------- 今天的步数 ----------
+   只影响"能扛多久"，永远不影响"打得多疼"。
+   小程序接入前，先用 URL 参数：index.html?steps=6386 */
+var STEPS = 6386;
+(function(){
+  var m = /[?&]steps=(\d+)/.exec(location.search);
+  if (m) STEPS = Math.max(0, +m[1]);
+})();
+var RANK_HP = [1.00, 1.10, 1.22, 1.35];   // 0/1/2/3 道杠的耐久系数
+function stepPoints(s){
+  var t = Math.min(Math.max(0, s), 10000) / 10000;
+  return Math.round(36 * Math.pow(t, 0.7));
+}
+function ranksFor(P){
+  var base = Math.floor(P/12), rem = P%12, a=[];
+  for (var i=0;i<12;i++) a.push(Math.min(3, base + (i<rem?1:0)));
+  return a;
+}
+function fmtNum(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+
+/* =========================================================
+   病毒：颜色 = 种类（绿→蓝→紫→橙，从弱到强），形状 = 等级
+   没被标记时一律是灰色剪影，标记到才显色 —— 一眼就能分清看没看见
+   ========================================================= */
+var TYPES = {
+  green:  { name:'绿株', hp:1.00, sp:1.15, dmg:1.00, split:0,   col:[ 96,232,140],
+            sub:'复制最快 · 最不经打' },
+  blue:   { name:'蓝株', hp:1.45, sp:1.00, dmg:1.20, split:0,   col:[ 96,178,255],
+            sub:'耐打 1.5 倍 · 打得更狠' },
+  purple: { name:'紫株', hp:2.10, sp:0.92, dmg:1.45, split:0,   col:[178,124,255],
+            sub:'耐打 2 倍 · 打得最狠' },
+  orange: { name:'橙株', hp:2.10, sp:0.92, dmg:1.45, split:2.0, col:[255,150, 60],
+            sub:'耐打 2 倍 · 打爆再冒两个' }
+};
+var LV_R   = [5, 9, 15, 22, 30];
+var LV_HP  = [1.0, 1.9, 3.4, 5.8, 9.6];
+var LV_DMG = [1.0, 1.5, 2.2, 3.1, 4.2];
+// 一只一分。不按等级打折 —— 越难打的本来就要花越多时间，
+// 「别拖」这件事由难度自己说，不靠扣分。
+
+/* =========================================================
+   战术基因
+   细胞怎么站位、怎么选目标，全在这张表里。
+   每打完一局，敌我双方各试几个变异体，好用的留下 —— 见「累积进化」。
+   ========================================================= */
+var TAC_BOUNDS = {
+  sep:     [0, 2.4],  // 细胞互相之间的硬斥力（间距）
+  repel:   [0, 2.4],  // 病毒靠太近时的斥力
+  advance: [0, 2.4],  // 离得远就往前压
+  home:    [0, 1.5],  // 回防自己那一格
+  depth:   [0, 1.5],  // 保持纵深（别全员挤成一条线）
+  spread:  [0, 1.5],  // 中距软斥力（铺开成网）
+  lead:    [0, 1.2],  // 提前量：瞄病毒"将要去的地方"
+  tgtDepth:[0, 2],    // 选目标：靠下的优先
+  tgtNear: [0, 2],    // 选目标：就近优先
+  tgtLevel:[0, 2],    // 选目标：大只的优先
+  tgtWeak: [0, 2],    // 选目标：残血的优先
+  retreat: [0, 2],    // 大只病毒贴脸时后撤
+  safe:    [0, 2]     // 快被打穿时脱离
+};
+
+var TAC_DEFAULT = {
+  sep:0.90, repel:0.85, advance:0.85, home:0.70, depth:0.90, spread:0,
+  lead:0, tgtDepth:1.00, tgtNear:0, tgtLevel:0, tgtWeak:0, retreat:0, safe:0
+};
+
+/* 遗传算法跑出来的冠军战术。
+   24 代 (μ+λ) 进化，训练用 5 个固定种子，在 6 个没参与训练的种子上复测：
+     手工版：得分 132.9  早清率 26%
+     这套：  得分 227.7  早清率 94% */
+var TAC_CHAMP = {
+  sep:0.1730, repel:0.0000, advance:1.9363, home:0.2911, depth:0.3544, spread:1.0754,
+  lead:1.0473, tgtDepth:0.9995, tgtNear:1.8201, tgtLevel:0.0608, tgtWeak:0, retreat:1.0494, safe:1.8418
+};
+
+function cloneTac(t){
+  var o={}; for (var k in TAC_BOUNDS) o[k] = (t && t[k]!==undefined) ? t[k] : TAC_DEFAULT[k];
+  return o;
+}
+// 当前生效的战术（开局时拷进 G.tac）
+var ACTIVE_TAC = cloneTac(TAC_DEFAULT);
+
+/* =========================================================
+   病毒的战术基因 —— 它也会进化
+   它的目标：干掉细胞、躲开识别、在盲区把自己养大
+   ========================================================= */
+var ENEMY_BOUNDS = {
+  toSoldier:  [0, 2],
+  aggro:      [110, 650],
+  spread:     [0, 1],     // 出了入侵口向两边散开的程度
+  waitDark:   [0, 1],
+  surround:   [0, 1.5]    // 包抄：绕到细胞侧面围上去
+};
+var ENEMY_DEFAULT = { toSoldier:1.0, aggro:330, spread:0.5, waitDark:0, surround:0.7 };
+function cloneEnemy(e){
+  var o={}; for (var k in ENEMY_BOUNDS) o[k]=(e&&e[k]!==undefined)?e[k]:ENEMY_DEFAULT[k]; return o;
+}
+var ENEMY_ACTIVE = cloneEnemy(ENEMY_DEFAULT);
+
+function lvOf(m){ return Math.min(4, Math.floor(m*5)); }
+
+/* =========================================================
+   流派
+   ========================================================= */
+/* =========================================================
+   状态
+   ========================================================= */
+var G = {
+  phase:'intro',
+  time:0,
+  wave:0, waveSpawned:0, waveBreak:0, stallT:0, orangeSpawned:0, waveQueue:[],
+  killed:0, score:0, seed:0,
+  cells:[], viruses:[], bullets:[], fx:[], shells:[], marks:[], flareFly:[],
+  flareT:0,
+  upIdx:0,
+  hold:CFG.hold,
+  tac: null, enemyTac: null, evoNote: '',
+  markCd:0, markCdMax:CFG.markCd,
+  squadPeak:12,
+  dmgMul:1, rateMul:1, hpMul:1,
+  shake:0, flashRed:0,
+  spawnAcc:0, spawnGap:0.9,
+  darkCount:0, killStage:[0,0,0,0,0], waveKill:[0,0,0,0,0],
+  overBtn:null, seenKind:{},
+  healAll:function(p){
+    for (var i=0;i<G.cells.length;i++){
+      var s=G.cells[i];
+      s.hp = Math.min(s.maxHp, s.hp + s.maxHp*p);
+    }
+  }
+};
+
+/* =========================================================
+   字幕：指挥官的话，一个字一个字打出来
+   每个时机配 2–4 句备选，随机挑一句（不会连着重复同一句）。
+   挑句子用一个自己的随机数，不碰游戏主随机流 —— 否则会影响确定性。
+   ========================================================= */
+var SAYS = {
+  start: [
+    '早识别，比什么都重要。',
+    '看住入侵口。早一秒都好。',
+    '它要过去，先过我们这关。'
+  ],
+  wave: [
+    '拖得越久，越难消灭。',
+    '不能再拖了。',
+    '时间不站在我们这边。'
+  ],
+  newkind: [
+    '新毒株。别等它变异。',
+    '又一种。先消灭它。',
+    '新毒株，更耐打。'
+  ],
+  grow: [
+    '它变异了。耐打多了。',
+    '晚了。现在更难消灭。'
+  ],
+  big: [
+    '太大了。现在要打很久。',
+    '太耐打了。全力。',
+    '再不打，就消灭不了了。'
+  ],
+  early: [
+    '早一秒，少一半攻击。',
+    '就是这样。趁它还没变异。',
+    '早消灭一个，后面少挨十下。'
+  ],
+  low: [
+    '不能让它扩散。',
+    '只剩我们几个了。',
+    '守住这一片。'
+  ],
+  clean: [
+    '了不起。一个都没变异。',
+    '这一波，全消灭了。'
+  ],
+  over: [
+    '下次，别等它变异。',
+    '记住：早识别。',
+    '下次，早一点。'
+  ],
+  dark: [
+    '朝没标记的地方扔抗体！',
+    '没标记，就打不到。',
+    '识别是第一位的。',
+    '没看见，不等于没有病毒。'
+  ],
+  hexa: [
+    '消灭了一个 5 级变异株！'
+  ]
+};
+var SAY_GAP = {}, SAY_LAST = -99, SAY_PICK = {};
+
+// 只用来挑台词的自带随机数，和游戏主随机流分开
+var saySeed = 20261027;
+function sayRand(){
+  saySeed = (saySeed*1103515245 + 12345) & 0x7fffffff;
+  return saySeed/0x7fffffff;
+}
+
+function sayClear(){ G.sayTxt=null; }
+function say(key,gap){
+  if (QUIET) return;
+  var pool=SAYS[key];
+  if (!pool || !G.cells || !G.cells.length) return;
+  var now=(typeof performance!=='undefined'?performance.now():Date.now())/1000;
+  if (now-(SAY_GAP[key]===undefined?-99:SAY_GAP[key]) < (gap||6)) return;
+  if (now-SAY_LAST < 1.2) return;
+  SAY_GAP[key]=now; SAY_LAST=now;
+
+  var idx=Math.floor(sayRand()*pool.length);
+  if (pool.length>1 && idx===SAY_PICK[key]) idx=(idx+1)%pool.length;
+  SAY_PICK[key]=idx;
+
+  // 挑一个还活着的细胞，让这句话从它头上冒出来
+  var c = G.cells[Math.floor(sayRand()*G.cells.length)] || G.cells[0];
+  G.sayTxt = { s:pool[idx], cell:c, t0:G.time, cps:20, hold:1.3, n:0 };
+}
+
+var AC=null;
+var MASTER=null, GUNBUS=null, NOISE=null, lastShot=0;
+
+function ac(){
+  if (QUIET) return null;      // 训练时没有音频，省掉 90% 的开销
+  if (!AC){
+    try { AC = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){ AC=null; return null; }
+    var m = AC.createGain(); m.gain.value = 0.95;
+    var comp = AC.createDynamicsCompressor();
+    comp.threshold.value=-16; comp.knee.value=12; comp.ratio.value=5;
+    comp.attack.value=0.003; comp.release.value=0.25;
+    m.connect(comp); comp.connect(AC.destination);
+    MASTER = m;
+    GUNBUS = AC.createGain(); GUNBUS.gain.value = 0.95; GUNBUS.connect(MASTER);
+    var len = Math.floor(AC.sampleRate*0.8);
+    NOISE = AC.createBuffer(1,len,AC.sampleRate);
+    var d = NOISE.getChannelData(0);
+    // 噪声缓冲用自带的随机数：不能让音频初始化去动游戏主随机流，
+    // 否则无头跑和浏览器跑会得到两条不同的种子线（以前就踩过）
+    var ns=987654321;
+    for (var i=0;i<len;i++){ ns=(ns*1103515245+12345)&0x7fffffff; d[i]=ns/0x7fffffff*2-1; }
+  }
+  if (AC.state==='suspended') AC.resume();
+  return AC;
+}
+// 清脆的击发声：短促高频噪声 + 尖锐的撞击
+// 给声音单独一条随机数：音频不能影响游戏的确定性
+var sndSeed=24681357;
+function sndRand(){ sndSeed=(sndSeed*1103515245+12345)&0x7fffffff; return sndSeed/0x7fffffff; }
+function snd(a,b){ return a + sndRand()*(b-a); }
+function gunshot(vol){
+  var a=ac(); if(!a) return;
+  var t=a.currentTime;
+  if (t-lastShot < 0.032) return;
+  lastShot=t;
+
+  var src=a.createBufferSource(); src.buffer=NOISE;
+  src.playbackRate.value = snd(1.6,2.3);
+  var hp=a.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=1800;
+  var bp=a.createBiquadFilter(); bp.type='bandpass';
+  bp.frequency.value = snd(2600,4200); bp.Q.value = 1.1;
+  var g=a.createGain();
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(vol||0.46, t+0.0015);
+  g.gain.exponentialRampToValueAtTime(0.0001, t+0.048);
+  src.connect(hp); hp.connect(bp); bp.connect(g); g.connect(GUNBUS);
+  src.start(t); src.stop(t+0.07);
+
+  var o=a.createOscillator(), og=a.createGain();
+  o.type='triangle';
+  o.frequency.setValueAtTime(420,t);
+  o.frequency.exponentialRampToValueAtTime(160,t+0.035);
+  og.gain.setValueAtTime((vol||0.46)*0.42,t);
+  og.gain.exponentialRampToValueAtTime(0.0001,t+0.045);
+  o.connect(og); og.connect(GUNBUS);
+  o.start(t); o.stop(t+0.06);
+}
+function tone(f,dur,type,vol,slideTo){
+  var a=ac(); if(!a) return;
+  var o=a.createOscillator(), g=a.createGain();
+  o.type=type||'sine';
+  o.frequency.setValueAtTime(f,a.currentTime);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(20,slideTo), a.currentTime+dur);
+  g.gain.setValueAtTime(0,a.currentTime);
+  g.gain.linearRampToValueAtTime(vol==null?0.06:vol, a.currentTime+0.005);
+  g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime+dur);
+  o.connect(g); g.connect(a.destination);
+  o.start(); o.stop(a.currentTime+dur+0.02);
+}
+function noise(vol,freq,q,dur){
+  var a=ac(); if(!a) return;
+  var s=a.createBufferSource(); s.buffer=NOISE;
+  var f=a.createBiquadFilter(); f.type='bandpass'; f.frequency.value=freq||1200; f.Q.value=q||1.2;
+  var g=a.createGain();
+  g.gain.setValueAtTime(vol,a.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime+(dur||0.08));
+  s.connect(f); f.connect(g); g.connect(a.destination);
+  s.start(); s.stop(a.currentTime+(dur||0.08)+0.02);
+}
+var sfx = {
+  shot: function(){ gunshot(0.46); },
+  hit:  function(){ noise(0.16, 2400, 3.2, 0.035); },
+  kill: function(){ noise(0.20, 700, 0.9, 0.13); tone(210,0.08,'sine',0.05,110); },
+  big:  function(){ noise(0.26, 420, 0.6, 0.26); tone(110,0.22,'sine',0.07,46); },
+  bite: function(){ noise(0.16, 500, 1.0, 0.10); tone(150,0.07,'sawtooth',0.06,80); },
+  pop:  function(){ tone(360,0.09,'triangle',0.05,820); },
+  // 字幕打字的"嗒"：极短极轻的高频噪声，别和击发声抢
+  tick: function(){
+    var a=ac(); if(!a) return;
+    if (a.currentTime - lastShot < 0.035) return;
+    noise(0.030, 3400, 2.4, 0.016);
+  },
+  mark:function(){ tone(900,0.14,'sine',0.05,1600); },
+  up:   function(){ tone(660,0.09,'sine',0.05); setTimeout(function(){ tone(990,0.12,'sine',0.045); },80); },
+  // 充能：每点亮一道杠就"嗒"一下，越高级越高
+  charge: function(L){ tone(470 + L*160, 0.028, 'square', 0.030); }
+};
+
+if (HEADLESS) for (var _sk in sfx) sfx[_sk] = function(){};
+
+/* =========================================================
+   工具
+   ========================================================= */
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+function rnd(a,b){ return a+rand()*(b-a); }
+function dist(ax,ay,bx,by){ var dx=ax-bx, dy=ay-by; return Math.sqrt(dx*dx+dy*dy); }
+function angNorm(a){ while(a>Math.PI) a-=TAU; while(a<-Math.PI) a+=TAU; return a; }
+
+/* =========================================================
+   背景
+   ========================================================= */
+var ground=null, DUST=[];
+function layout(){
+  var fb=document.getElementById('markBtn');
+  fb.style.left=(W-72-14)+'px';
+  fb.style.top =(H-72-14)+'px';
+}
+function resize(){
+  fitStage(); layout();
+  var r=stageEl.getBoundingClientRect();
+  var dpr=Math.min(window.devicePixelRatio||1,2);
+  cv.width=Math.max(1,Math.round(r.width*dpr));
+  cv.height=Math.max(1,Math.round(r.height*dpr));
+  buildGround(); buildDust();
+}
+window.addEventListener('resize', resize);
+
+function buildGround(){
+  var dpr=Math.min(window.devicePixelRatio||1,2);
+  var c=document.createElement('canvas');
+  c.width=Math.round(W*dpr); c.height=Math.round(H*dpr);
+  var g=c.getContext('2d'); g.scale(dpr,dpr);
+  g.fillStyle='#04060b'; g.fillRect(0,0,W,H);
+  var lg=g.createLinearGradient(0,TOP_EDGE,0,LINE_Y);
+  lg.addColorStop(0,'rgba(18,32,48,0.5)');
+  lg.addColorStop(0.45,'rgba(10,18,28,0.22)');
+  lg.addColorStop(1,'rgba(6,10,16,0)');
+  g.fillStyle=lg; g.fillRect(0,TOP_EDGE,W,LINE_Y-TOP_EDGE);
+  for (var i=0;i<1500;i++){
+    var x=rand()*W, y=TOP_EDGE+rand()*(LINE_Y-TOP_EDGE);
+    var d=(y-TOP_EDGE)/(LINE_Y-TOP_EDGE);
+    g.fillStyle='rgba(150,180,215,'+(0.05*(0.35+d*0.65)).toFixed(3)+')';
+    var s=rand()<0.88?1.1:2.0;
+    g.fillRect(x,y,s,s);
+  }
+  g.strokeStyle='rgba(90,130,170,0.035)'; g.lineWidth=1;
+  for (var k=0;k<18;k++){
+    var yy=TOP_EDGE+Math.pow(k/17,1.8)*(LINE_Y-TOP_EDGE);
+    g.beginPath(); g.moveTo(0,yy); g.lineTo(W,yy); g.stroke();
+  }
+  for (var v=0;v<14;v++){
+    var bx=(v/13)*W;
+    g.beginPath(); g.moveTo(bx,LINE_Y); g.lineTo(W*0.5+(bx-W*0.5)*0.18,TOP_EDGE); g.stroke();
+  }
+  ground=c;
+}
+function buildDust(){
+  DUST=[];
+  for (var i=0;i<220;i++) DUST.push({x:rand()*W,y:TOP_EDGE+rand()*(LINE_Y-TOP_EDGE),vy:rnd(3,10),vx:rnd(-4,4)});
+}
+
+/* =========================================================
+   细胞
+   ========================================================= */
+function makeSquad(n){
+  G.cells=[];
+  for (var i=0;i<n;i++) pushCell(i,n);
+}
+function pushCell(i,n){
+  G.cells.push({
+    idx:i, mate:null, marks:CFG.flarePerSoldier, throwT:0,
+    x: 26+(n<=1?0.5:i/(n-1))*(W-52),
+    homeX: 26+(n<=1?0.5:i/(n-1))*(W-52),
+    y: LINE_Y-10,
+    aim:-Math.PI/2,
+    cd:rand()*0.3, flash:0, recoil:0,
+    hp:CFG.soldierHp*G.hpMul, maxHp:CFG.soldierHp*G.hpMul,
+    hurt:0, biasY:rnd(-140,20)
+  });
+}
+function addCell(){
+  var arr=G.cells;
+  arr.push({ idx:arr.length, mate:null, marks:CFG.flarePerSoldier, throwT:0,
+             x:W*0.5, homeX:W*0.5, y:LINE_Y-10, aim:-Math.PI/2,
+             cd:rand()*0.3, flash:0, recoil:0,
+             hp:CFG.soldierHp*G.hpMul, maxHp:CFG.soldierHp*G.hpMul,
+             hurt:0, biasY:rnd(-140,20) });
+  for (var i=0;i<arr.length;i++) arr[i].homeX = 26+(arr.length<=1?0.5:i/(arr.length-1))*(W-52);
+}
+
+/* =========================================================
+   病毒
+   ========================================================= */
+/* ---------- 每一波的敌人配置 ----------
+   总数：第 1 波 20 只，之后每波 +2（内部关卡号 w 从 0 开始，显示时 +1）。
+   构成：绿株垫底；蓝/紫/橙从指定关卡开始出现，占比随关卡数上升。
+   每种高级敌人都有一个 [下限, 上限] 的随机范围，两头都随关卡数一起长，
+   所以越往后不只是"高级的更多"，"这一波究竟来几个"的波动也更大。 */
+var WAVE_RULE = {
+  base: 20, step: 2,                    // N(w) = 20 + 2w
+  blue:   { from: 3,  cap: 0.38, span: 9 },    // 第 3 关开始，9 关后到 38% 封顶
+  purple: { from: 4,  cap: 0.24, span: 10 },
+  orange: { from: 6,  cap: 0.12, span: 9 }
+};
+function waveTotal(w){ return WAVE_RULE.base + WAVE_RULE.step*Math.max(0,w); }
+
+// 某一种高级敌人这一波能出几只 → [最少, 最多]
+function typeRange(key, shown, N){
+  var r=WAVE_RULE[key];
+  if (shown < r.from) return [0,0];
+  var t=Math.min(1, (shown-r.from+1)/r.span);
+  var hi=Math.max(1, Math.round(N*r.cap*t));
+  var lo=Math.max(1, Math.floor(hi*0.55));
+  return [lo, hi];
+}
+
+// 压力旋钮：调难度只动这三个乘数，方便跑模拟扫参数
+function waveCfg(w){
+  return {
+    n: waveTotal(w),
+    hp: 34*(1+0.44*w)*CFG.pressHp*CFG.hpK,
+    sp: Math.min(95, (34+1.0*w)*CFG.spK),
+    gap: Math.max(0.30, (0.98-0.03*w)*CFG.pressGap)
+  };
+}
+var TYPE_KEYS = ['green','blue','purple','orange'];
+
+/* 每一波在开波时就把「种类 + 数量」定死，再按 CFG.waveEnterSec
+   把这一批全部送进战场，不再边打边随机冒。 */
+function buildWaveList(w){
+  var N=waveTotal(w), shown=w+1;
+  function pick(key){
+    var r=typeRange(key, shown, N);
+    return r[1]<=0 ? 0 : r[0] + Math.floor(rand()*(r[1]-r[0]+1));
+  }
+  var nb=pick('blue'), np=pick('purple'), no=pick('orange');
+  no=Math.min(no, CFG.orangeInList);        // 名单里橙株限量，其余靠分裂补
+  // 名额可能超员：先削紫、再削蓝，保证绿株至少还剩 4 只
+  while (nb+np+no > N-4 && np>0) np--;
+  while (nb+np+no > N-4 && nb>0) nb--;
+  var ng=N-nb-np-no;
+
+  var list=[];
+  var i;
+  for (i=0;i<ng;i++) list.push('green');
+  for (i=0;i<nb;i++) list.push('blue');
+  for (i=0;i<np;i++) list.push('purple');
+  for (i=0;i<no;i++) list.push('orange');
+  for (var k=list.length-1;k>0;k--){          // 打散出场顺序
+    var r=Math.floor(rand()*(k+1)), tmp=list[k]; list[k]=list[r]; list[r]=tmp;
+  }
+  return list;
+}
+function makeDemon(type, x, y, m){
+  var t=TYPES[type], w=waveCfg(G.wave), lv=lvOf(m);
+  var hp = w.hp*t.hp*LV_HP[lv];
+  return {
+    type:type, x:x, y:y, m:m, lv:lv, pop:0,
+    hp:hp, max:hp, r:LV_R[lv], sp:w.sp*t.sp*rnd(0.9,1.1),
+    seed:rand()*TAU, vis:0, hold:0, flash:0, reveal:0, squash:0, ejX:0, ejY:0,
+    atk:rnd(0,0.3), age:0, unlitT:0, exposed:false, splitT:t.split||0, lvT:G.time,
+    splitLeft: (t.split>0 ? CFG.splitMax : 0), dead:false
+  };
+}
+// 场上还活着几只橙株（分裂上限按这个算，不能按'本波出生数'，那样上一波活下来的不算）
+function liveOrange(){
+  var c=0;
+  for (var i=0;i<G.viruses.length;i++) if (G.viruses[i].type==='orange' && !G.viruses[i].dead) c++;
+  return c;
+}
+
+function spawnOne(type, x, y, m){
+  if (G.viruses.length > 120) return null;
+  // 橙株总量封顶：名额满了就换紫株顶上，名单总数不变
+  if (type==='orange' && liveOrange() >= CFG.orangePerWave) type='purple';
+  var z = makeDemon(type||'green',
+                    x!==undefined ? x : gateX() + rnd(-CFG.gateW*0.38, CFG.gateW*0.38),
+                    y!==undefined ? y : TOP_EDGE-rnd(2,8),
+                    m===undefined ? 0 : m);
+  G.viruses.push(z);
+  if (z.type==='orange') G.orangeSpawned++;     // 一关内的橙株总量从刷出来就开始算
+  if (!G.seenKind[z.type]){
+    G.seenKind[z.type]=1;
+    queueBanner('新 毒 株', TYPES[z.type].name, TYPES[z.type].sub, true);
+    say('newkind',0);
+  }
+  return z;
+}
+
+/* =========================================================
+   识别
+   ========================================================= */
+function inMark(x,y){
+  for (var i=0;i<G.marks.length;i++){
+    var f=G.marks[i];
+    if (dist(x,y,f.x,f.y) < CFG.flareR) return true;
+  }
+  return false;
+}
+var SIGHT = { range:145, half:0.68, near:38 };
+function inSight(x,y){
+  for (var i=0;i<G.cells.length;i++){
+    var s=G.cells[i];
+    var dx=x-s.x, dy=y-s.y, d=Math.sqrt(dx*dx+dy*dy);
+    if (d < SIGHT.near) return true;
+    if (d > SIGHT.range) continue;
+    if (Math.abs(angNorm(Math.atan2(dy,dx)-s.aim)) < SIGHT.half) return true;
+  }
+  return false;
+}
+function visible(x,y){ return inMark(x,y)||inSight(x,y); }
+
+/* =========================================================
+   更新
+   ========================================================= */
+function beginBattle(){
+  if (!G.cover) return;
+  G.cover = false;
+  G.charging = true;
+  G.chargeT = 0; G.chargeLit = 0; G.chargeLanded = 0;
+  G.chargeParticles = []; G.chargeShake = 0;
+  if (!QUIET){
+    var sb=document.getElementById('startBtn'); if (sb) sb.className='';
+  }
+}
+
+function launchChevron(){
+  var it = G.chargeOrder[G.chargeLit];
+  if (!it){ return; }
+  var cell=null;
+  for (var i=0;i<G.cells.length;i++) if (G.cells[i].idx === it[0]){ cell=G.cells[i]; break; }
+  if (!cell){ G.chargeLit++; return; }
+  var tx = cell.x + (cell.x > W-44 ? -13 : 13);
+  var ty = cell.y + 6 - (it[1]-1)*5.4;
+  G.chargeParticles.push({
+    x0: W/2 + ((G.chargeLit % 7) - 3) * 16, y0: 448,
+    x1: tx, y1: ty, t0: G.time, dur: 0.34, lv: it[1]
+  });
+  G.chargeShake = 0.09;
+  G.chargeLit++;
+}
+
+function update(dt){
+  if (G.phase !== 'play') return;
+  G.time += dt;
+
+  if (G.cover) return;                 // 封面页：等玩家点开战
+
+  // ---- 开局充能：点数一枚一枚打进队伍，战场先冻住 ----
+  if (G.charging){
+    G.chargeT += dt;
+    if (G.chargeShake > 0) G.chargeShake -= dt;
+    var litN = Math.min(G.chargeOrder.length, Math.floor(G.chargeT/G.chargeDur*G.chargeOrder.length + 1e-6));
+    while (G.chargeLit < litN) launchChevron();
+    // 落地的 ^ 才变成军衔：所以数字先减、下面的杠后亮，中间是那一下坠落
+    for (var pi=G.chargeParticles.length-1; pi>=0; pi--){
+      var pp=G.chargeParticles[pi];
+      if (G.time - pp.t0 >= pp.dur){
+        sfx.charge(pp.lv);
+        G.chargeLanded++;
+        G.chargeParticles.splice(pi,1);
+      }
+    }
+    if (G.chargeT >= G.chargeDur && G.chargeParticles.length === 0){
+      G.charging = false;
+      sfx.up();
+      queueBanner('', '第 1 波', '');
+      say('start', 0);
+      if (!QUIET){
+        var hi=document.getElementById('hint');
+        hi.classList.add('on');
+        setTimeout(function(){ hi.classList.remove('on'); }, 7000);
+        var mb=document.getElementById('markBtn'); if (mb) mb.style.display='';
+      }
+    }
+    return;
+  }
+
+  if (G.markCd > 0) G.markCd = Math.max(0, G.markCd-dt);
+  for (var fi=G.marks.length-1; fi>=0; fi--){
+    G.marks[fi].t -= dt;
+    G.marks[fi].age = (G.marks[fi].age||0) + dt;
+    if (G.marks[fi].t <= 0) G.marks.splice(fi,1);
+  }
+
+  // 按名单逐个送进场：间隔 = 这一批要在多久内送完 / 数量
+  if (G.waveSpawned < G.waveQueue.length){
+    G.spawnAcc += dt;
+    while (G.spawnAcc >= G.spawnGap && G.waveSpawned < G.waveQueue.length){
+      G.spawnAcc -= G.spawnGap;
+      spawnOne(G.waveQueue[G.waveSpawned]);
+      G.waveSpawned++;
+    }
+  }
+
+  updateViruses(dt);
+  updateCells(dt);
+  updateMarks(dt);
+  updateBullets(dt);
+  updateFx(dt);
+
+  // 场上有一片黑的 —— 提醒抗体 / 侦查（say 内部有 50 秒节流，不会刷屏）
+  if (G.darkCount >= 5) say('dark', 50);
+
+  // 只有把这一波全部消灭，才允许下一波进场。
+  // 不再有"超时就强推"的兜底 —— 漏网的那几只必须打掉。
+  // 为防止有谁永远躲在盲区不出来，病毒自己会在场上待久了变得急躁（见 updateViruses）。
+  if (G.waveSpawned >= G.waveQueue.length && G.viruses.length === 0){
+    // 这一波消灭干净的第一帧：如果七成以上都是没变异就打掉的，夸一句
+    if (G.waveBreak === 0){
+      var wk=G.waveKill, wt=wk[0]+wk[1]+wk[2]+wk[3]+wk[4];
+      if (wt>=10 && wk[0]/wt >= 0.85){ G.cleanN=(G.cleanN||0)+1; say('clean', 70); }
+    }
+    G.waveBreak += dt;
+    if (G.waveBreak > 2.0){ G.waveBreak=0; nextWave(); }
+  } else {
+    G.waveBreak = 0;
+  }
+
+  G.shake *= Math.pow(0.002,dt);
+  if (G.flashRed > 0) G.flashRed = Math.max(0, G.flashRed-dt*2.4);
+  syncHUD();
+}
+
+function updateViruses(dt){
+  var dark=0, w=waveCfg(G.wave);
+  // 每帧重算：每个细胞被几只病毒当成最近的猎物（用来判断"被围住了"）
+  for (var hu=0;hu<G.cells.length;hu++) G.cells[hu].hunts=0;
+
+  for (var i=G.viruses.length-1;i>=0;i--){
+    var z=G.viruses[i];
+    if (z.dead) continue;
+    var _ox=z.x, _oy=z.y;
+    z.age += dt;
+    if (z.flash>0) z.flash=Math.max(0,z.flash-dt*4);
+    if (z.pop>0) z.pop=Math.max(0,z.pop-dt*2.6);
+    if (z.reveal>0) z.reveal=Math.max(0,z.reveal-dt*1.8);
+    if (z.squash>0) z.squash=Math.max(0,z.squash-dt*4.5);
+
+    var lit = visible(z.x,z.y);
+    // 在盲区蹲太久就会被细胞的备用手段标出来（敌人 AI 不参与，只是被发现）
+    if (lit) z.unlitT = 0; else z.unlitT += dt;
+    z.exposed = z.unlitT > 15;
+    if (lit) z.hold=G.hold; else z.hold=Math.max(0,z.hold-dt);
+    var seen = lit || z.hold>0;
+    z.vis = seen ? Math.min(1,z.vis+dt*10) : Math.max(0,z.vis-dt*4.5);
+    if (!seen) dark++;
+
+    // 变异只看时间，跟你有没有看见它无关 —— 你不看，它也在变。
+    // 标记只决定一件事：这一刻能不能选中它。
+    z.m = Math.min(1, z.m + dt*0.2/CFG.lvDur[Math.min(4,z.lv)]);
+    var nl = lvOf(z.m);
+    if (nl > z.lv){
+      // 调试用：记录每级实际花了多久（G.lvLog 由模拟脚本打开，正常游戏是 undefined）
+      if (G.lvLog) G.lvLog.push({ t:+G.time.toFixed(2), wave:G.wave, lv:nl,
+                                  d:+(G.time-(z.lvT||0)).toFixed(2), type:z.type });
+      z.lvT = G.time;
+      z.lv = nl;
+      z.r = LV_R[nl];
+      z.pop = 1;                       // 弹性放大（见 drawVirus）
+      z.flash = 1;                     // 升级瞬间泛白
+      z.reveal = 1;                    // 就算在盲区，也把新形状亮出来给玩家看
+      // 爆开的冲击波：两道环 + 一圈碎屑
+      addFx({k:'ring', x:z.x, y:z.y, r:z.r*0.8, grow:z.r*3.4, life:0.5, max:0.5, c:'255,236,170', w:3});
+      addFx({k:'ring', x:z.x, y:z.y, r:z.r*0.4, grow:z.r*2.0, life:0.28, max:0.28, c:'255,255,255', w:2});
+      var gn = 8+z.lv*4;
+      for (var g2=0;g2<gn;g2++){
+        var ga=rand()*TAU, gs=rnd(70,150+z.lv*40);
+        addFx({k:'blood', x:z.x, y:z.y, vx:Math.cos(ga)*gs, vy:Math.sin(ga)*gs,
+               life:rnd(0.3,0.55), max:0.55, c:'255,214,140', s:rnd(1.2,2.6)});
+      }
+      G.shake = Math.min(3, G.shake + 0.18+z.lv*0.12);
+      sfx.pop();
+      if (nl >= 4) addFx({k:'txt', x:z.x, y:z.y-z.r-36, vx:0, vy:0, s:'hahaha',
+                          c:'255,116,104', sz:19, life:1.4, max:1.4});
+      addFx({k:'txt', x:z.x, y:z.y-z.r-12, vx:0, vy:0, s:'变异', sz:18, life:0.9, max:0.9,
+             c: nl>=3 ? '255,110,95' : (nl>=2 ? '255,176,90' : '255,226,150')});
+      if (nl>=3) say('big',20);
+      else if (nl>=2) say('grow',18);
+    }
+
+    var t=TYPES[z.type];
+    z.max = w.hp*t.hp*LV_HP[z.lv];
+    if (z.hp > z.max) z.hp = z.max;
+    z.r = LV_R[z.lv];
+
+    // 分裂（橙株）：一分为二，两半朝相反方向弹开。
+    // 两个闸门：每只最多分裂 CFG.splitMax 次；一关内橙株总数不超过 CFG.orangePerWave
+    if (t.split > 0 && z.splitLeft > 0){
+      z.splitT -= dt;
+      // 直接卡「场上还活着的橙株数量」，跨波也压得住
+      var canSplit = (z.splitLeft > 0) && (liveOrange() < CFG.orangePerWave) && (G.viruses.length < 110);
+      if (z.splitT <= 0 && canSplit){
+        z.splitT = t.split;
+        z.splitLeft--;
+        z.squash = 1;
+        var sa0 = rand()*TAU;
+        var CA = Math.cos(sa0), SA = Math.sin(sa0);
+        // 父体往一边弹，子体往另一边弹
+        z.ejX = -CA*170; z.ejY = -SA*170;
+        var nz = makeDemon(z.type, z.x + CA*7, z.y + SA*7, z.m);
+        nz.hp = nz.max*0.7;
+        nz.ejX = CA*170; nz.ejY = SA*170;
+        nz.squash = 1;
+        nz.splitLeft = z.splitLeft;      // 子体继承剩余次数，复制次数是有限的
+        G.viruses.push(nz);
+        G.orangeSpawned++;
+        // 视觉：中线上一道亮缝 + 两侧各一圈环，读起来就是"裂开了"
+        addFx({k:'ring', x:z.x - CA*z.r*0.6, y:z.y - SA*z.r*0.6, r:z.r*0.7, grow:z.r*2.2,
+               life:0.38, max:0.38, c:'255,190,110', w:3});
+        addFx({k:'ring', x:z.x + CA*z.r*0.6, y:z.y + SA*z.r*0.6, r:z.r*0.7, grow:z.r*2.2,
+               life:0.38, max:0.38, c:'255,190,110', w:3});
+        addFx({k:'split', x:z.x, y:z.y, a:sa0, r:z.r*2.2, life:0.26, max:0.26, c:'255,236,190', s:0, grow:0});
+        addFx({k:'txt', x:z.x, y:z.y-z.r-14, vx:0, vy:0, s:'复制', c:'255,168,90', sz:18, life:0.95, max:0.95});
+        for (var s2=0;s2<10;s2++){
+          var sa=rand()*TAU, ss=rnd(60,140);
+          addFx({k:'blood', x:z.x, y:z.y, vx:Math.cos(sa)*ss, vy:Math.sin(sa)*ss,
+                 life:rnd(0.25,0.5), max:0.5, c:'255,170,90', s:rnd(1.2,2.4)});
+        }
+        G.shake = Math.min(3, G.shake + 0.12);
+        sfx.pop();
+      }
+    }
+
+    // ---- 病毒的战术：下面这些权重都是它自己进化出来的 ----
+    var eg = G.enemyTac;
+    var tgt=null, bd=1e9;
+    for (var s=0;s<G.cells.length;s++){
+      var so=G.cells[s];
+      var d2=dist(z.x,z.y,so.x,so.y);
+      if (d2 < bd){ bd=d2; tgt=so; }
+    }
+    if (tgt) tgt.hunts = (tgt.hunts||0)+1;
+
+    // 合成一个方向：追细胞（绕到侧面包抄）+ 一点下压 + 躲光 + 向中线聚拢
+    // 下压只在"细胞在它下面"时起作用。细胞已经在上面了还往下压，
+    // 病毒就会一直贴着屏障，永远爬不上去 —— 这就是之前"被压住"的原因。
+    var belowT = (tgt && z.y > tgt.y + 10);
+    var fdx=0, fdy = belowT ? 0.05 : 0.40*clamp(1 - bd/520, 0, 1) + 0.05;
+    if (tgt && bd>0.1){
+      // 不管多远都保留一点向细胞的吸引力，否则远处的病毒会一路飘出画面永不接战
+      var pw = eg.toSoldier * (0.22 + 0.78*clamp(1 - bd/eg.aggro, 0, 1));
+      if (pw>0.001){
+        var ux=(tgt.x-z.x)/bd, uy=(tgt.y-z.y)/bd;
+        fdx += ux*pw; fdy += uy*pw;
+        // 包抄：加一个侧向分量，让它们从不同方向围上去，而不是全挤在同一侧。
+        // 越近这个分量越弱，否则会绕着细胞转圈不打。
+        var side = (z.seed % 1) < 0.5 ? 1 : -1;
+        var sw = eg.surround * pw * clamp((bd-40)/150, 0, 1) * 0.9;
+        fdx += (-uy)*side*sw;
+        fdy += ( ux)*side*sw;
+      }
+    }
+    // 病毒的战术完全交给进化，不做任何「降智」处理
+    // 出了入侵口各自往两边散。以前这里是「向中线聚拢」，
+    // 而入侵口就在中线，结果它们被一直拉回入侵口赖着不出来。
+    if (eg.spread>0){
+      fdx += ((z.seed % 1) - 0.5) * 2 * eg.spread * 0.55;
+    }
+
+    // 分裂弹开的速度，很快衰减
+    if (z.ejX || z.ejY){
+      z.x += z.ejX*dt; z.y += z.ejY*dt;
+      var ejd = Math.pow(0.001, dt);
+      z.ejX *= ejd; z.ejY *= ejd;
+      if (Math.abs(z.ejX)<1) z.ejX=0;
+      if (Math.abs(z.ejY)<1) z.ejY=0;
+    }
+
+    var nf = Math.sqrt(fdx*fdx+fdy*fdy);
+    var nearSoldier = tgt && bd < Math.max(20, z.r+14);
+    if (nf > 0.02 && !nearSoldier){
+      var sp = z.sp*(1+0.35*z.lv);
+      // 没被标记时，愿意在盲区磨着变异
+      if (!lit) sp *= (1 - 0.55*eg.waitDark*(1-z.m));
+      z.x += fdx/nf*sp*dt;
+      z.y += fdy/nf*sp*dt;
+    }
+    // 病毒始终留在阵地内，不会贴着木桩"假装在打"
+    z.x = clamp(z.x, 8, W-8);
+    if (z.y > LINE_Y-8) z.y = LINE_Y-8;
+
+    // 只有一种攻击：打细胞。屏障不再会被打穿，也不设失败规则 ——
+    // 唯一的输法就是 12 个细胞全死光。
+    if (nearSoldier){
+      z.atk -= dt;
+      if (z.atk <= 0){
+        z.atk = CFG.chew;
+        var dmg=(2.2+5.5*z.lv)*t.dmg*CFG.dmgK;
+        tgt.hp -= dmg; tgt.hurt=1;
+        sfx.bite();
+        addFx({k:'blood', x:tgt.x, y:tgt.y-4, vx:rnd(-40,40), vy:rnd(-70,-10),
+               life:0.4, max:0.4, c:'255,120,90', s:2.2});
+        G.flashRed = Math.max(G.flashRed, 0.10);
+        if (rand()<0.10){
+          var bl = ['顶住。', '被打穿了。', '别让它碰到你。'];
+          addFx({k:'txt', x:clamp(tgt.x, 46, W-46), y:tgt.y-10, vx:0, vy:0,
+                 s: bl[Math.floor(sayRand()*bl.length)],
+                 c:'255,170,140', sz:14, life:1.1, max:1.1});
+        }
+        if (tgt.hp <= 0) killCell(tgt);
+      }
+    }
+    z.vx=(z.x-_ox)/dt; z.vy=(z.y-_oy)/dt;
+  }
+  G.darkCount = dark;
+}
+
+function killCell(s){
+  var idx=G.cells.indexOf(s);
+  if (idx<0) return;
+  G.cells.splice(idx,1);
+  // 最后一口气：头顶飘一个 ahhh
+  addFx({k:'txt', x:clamp(s.x+rnd(-6,6), 44, W-44), y:s.y-15, vx:0, vy:0, s:'ahhh',
+         c:'255,150,130', sz:18, life:1.25, max:1.25});
+  for (var i=0;i<16;i++){
+    var a=rand()*TAU;
+    addFx({k:'blood', x:s.x, y:s.y, vx:Math.cos(a)*rnd(50,200), vy:Math.sin(a)*rnd(50,200),
+           life:rnd(0.35,0.7), max:0.7, c:'255,170,110', s:rnd(1.4,3)});
+  }
+  G.shake=Math.min(3.5,G.shake+1.4);
+  G.flashRed=Math.max(G.flashRed,0.35);
+  sfx.big();
+  if (G.cells.length<=3) say('low',20);
+  if (G.cells.length===0) gameOver();
+}
+
+/* =========================================================
+   细胞怎么打
+
+   L0 军规   TAC 12 个基因，全队共享
+   L1 分派   每 0.2 秒一次贪心拍卖，决定"这只病毒归谁打"
+             —— 配合的主要来源，不读代码也能看懂
+   L2 反射   keepAway 贴脸后撤，写死，不交给进化
+   ========================================================= */
+
+/* ---------- L1 拍卖 ----------
+   每 0.2 秒重新分一次。病毒"需要几个细胞打"由耐久决定：
+   单细胞 DPS ≈ 7/0.26 ≈ 27，按够打 1.7 秒算一个名额。
+   然后按军规原本的打分（tgtDepth / tgtNear / tgtLevel）做一次全局贪心匹配：
+   全局分数最高的那一对先配，配上了就占掉这只病毒的一个名额。
+   这样既保留了进化出来的选目标偏好，又不会 12 个细胞挤同一只。   */
+function auctionTargets(alive, dt, t){
+  G.awT -= dt;
+  if (G.awT > 0) return;
+  G.awT = 0.2;
+
+  var i, j, z, gd, d3;
+  // ---- 守门席位的轮换 ----
+  // 每 3 秒重选一次：让最耐打的 N 个上前顶着。
+  // 不是因为"前排该换人"，是因为这样快撑不住的会自动退下来 —— 轮换本身就是配合。
+  G.guardT -= 0.2;
+  if (G.guardT <= 0){
+    G.guardT = 3;
+    var gl = CFG.gateGuard|0;
+    for (i=0;i<alive.length;i++) alive[i].guard=0;
+    if (gl>0 && alive.length > gl+1){
+      var ord = alive.slice().sort(function(a,b){ return (b.hp/b.maxHp)-(a.hp/a.maxHp); });
+      for (i=0;i<gl;i++) ord[i].guard=1;
+    }
+  }
+
+  var vis=[];
+  for (i=0;i<G.viruses.length;i++){
+    z=G.viruses[i];
+    if (z.dead){ z.assigned=0; continue; }
+    z.assigned=0;
+    if (z.vis>=0.35 || z.exposed) vis.push(z);
+  }
+  for (i=0;i<alive.length;i++) alive[i].mate=null;
+  if (!vis.length) return;
+
+  // 打一只病毒要几个细胞：单细胞 DPS ≈ 27，按够打 needK 秒算一个名额
+  var dps=CFG.soldierDmg/CFG.soldierRate;
+  for (i=0;i<vis.length;i++){
+    z=vis[i];
+    var need=Math.round(z.hp/(dps*CFG.needK));
+    z.need = need<1?1:(need>5?5:need);
+  }
+
+  var spanY=LINE_Y-TOP_EDGE;
+  var pairs=[];
+  for (i=0;i<alive.length;i++){
+    gd=alive[i];
+    if (gd.guard) continue;                  // 守门的两个不参与分派
+    for (j=0;j<vis.length;j++){
+      z=vis[j];
+      d3=dist(gd.x,gd.y,z.x,z.y)||1;
+      var sc = t.tgtDepth*clamp((z.y-TOP_EDGE)/spanY,0,1)
+             + t.tgtNear *(1-clamp(d3/760,0,1))
+             + t.tgtLevel*(z.lv/4)
+             + t.tgtWeak *(1 - z.hp/Math.max(1,z.max));
+      pairs.push({ s:gd, z:z, sc:sc, d:d3 });
+    }
+  }
+  // 分数高的先配；同分时谁近谁先
+  pairs.sort(function(a,b){ return (b.sc-a.sc) || (a.d-b.d); });
+
+  for (var p=0;p<pairs.length;p++){
+    var pr=pairs[p];
+    if (pr.s.mate) continue;                 // 这个细胞已经配到了
+    if (pr.z.assigned >= pr.z.need) continue; // 这只已经够人打了
+    pr.s.mate=pr.z; pr.z.assigned++;
+  }
+
+  // 守门的两个细胞：谁离入侵口最近就打谁（刚进场的，最新鲜，也最危险）
+  for (i=0;i<alive.length;i++){
+    gd=alive[i];
+    if (!gd.guard) continue;
+    var gz=null, gd2=1e9;
+    for (j=0;j<vis.length;j++){
+      var dz=Math.abs(vis[j].y-TOP_EDGE)+Math.abs(vis[j].x-gateX())*0.6;
+      if (dz<gd2){ gd2=dz; gz=vis[j]; }
+    }
+    gd.mate=gz;
+  }
+  // 没配到的（场上敌人少、名额都满了）仍然去打自己最想要的那只，
+  // 这是集火，不是抢工 —— 由下面的老逻辑兜底。
+}
+
+function updateCells(dt){
+  var alive=G.cells;
+  if (!alive.length) return;
+  var t=G.tac;
+  var spanY=LINE_Y-TOP_EDGE;
+
+  if (CFG.auction) auctionTargets(alive, dt, t);   // L1：先分赃，再各打各的
+
+  for (var s=0;s<alive.length;s++){
+    var gd=alive[s];
+    if (gd.flash>0) gd.flash=Math.max(0,gd.flash-dt*5);
+    if (gd.hurt>0) gd.hurt=Math.max(0,gd.hurt-dt*2.4);
+    if (gd.throwT>0) gd.throwT=Math.max(0,gd.throwT-dt);
+    gd.recoil *= Math.pow(0.0001,dt);
+    gd.cd -= dt;
+
+    var fx=0, fy=0, nd=1e9, nearZ=null;
+    var bestZ=null, bs=-1e9;
+    for (var j=0;j<G.viruses.length;j++){
+      var zz=G.viruses[j];
+      if (zz.dead) continue;
+      var ddx=gd.x-zz.x, ddy=gd.y-zz.y;
+      var d3=Math.sqrt(ddx*ddx+ddy*ddy)||1;
+      if (d3<nd){ nd=d3; nearZ=zz; }
+      if (d3<320){
+        var wgt=(320-d3)/320; wgt*=wgt;
+        fx += ddx/d3*wgt*t.repel*2.0;
+        fy += ddy/d3*wgt*t.repel*2.0;
+      }
+      // 目标打分：靠下 / 就近 / 大只，三个权重由基因决定
+      if (zz.vis>=0.35 || zz.exposed){
+        var sc = t.tgtDepth*clamp((zz.y-TOP_EDGE)/spanY,0,1)
+               + t.tgtNear *(1-clamp(d3/760,0,1))
+               + t.tgtLevel*(zz.lv/4)
+               + t.tgtWeak *(1 - zz.hp/Math.max(1,zz.max));
+        if (sc>bs){ bs=sc; bestZ=zz; }
+      }
+    }
+
+    // 拍卖的结果优先：分给我的那只，就是我要打的这只
+    if (gd.mate && !gd.mate.dead) bestZ = gd.mate;
+
+    var gAdv=t.advance, gRet=t.retreat, gSpr=t.spread;
+
+    if (bestZ){
+      var bx=bestZ.x-gd.x, by=bestZ.y-gd.y;
+      var bd=Math.sqrt(bx*bx+by*by)||1;
+      var push=clamp((bd-210)/300,0,1);
+      fx += bx/bd*push*gAdv;
+      fy += by/bd*push*gAdv;
+      // 大只敌人贴脸：后撤
+      if (bestZ.lv>=2){
+        var danger=1-clamp((bd-90)/160,0,1);
+        if (danger>0){
+          fx -= bx/bd*danger*gRet;
+          fy -= by/bd*danger*gRet;
+        }
+      }
+    }
+
+    // 保命屏障（不交给进化决定）：任何病毒贴进 keepAway 之内，就全速后撤。
+    // 后撤不影响开火 —— 下面照样瞄准、照样扣扳机，这就是放风筝。
+    var kite = 0;
+    if (nearZ){
+      kite = clamp((CFG.keepAway - nd)/CFG.keepAway, 0, 1);
+      if (kite > 0){
+        var kx=gd.x-nearZ.x, ky=gd.y-nearZ.y;
+        var kd=Math.sqrt(kx*kx+ky*ky)||1;
+        fx += kx/kd * kite * 3.4;
+        fy += ky/kd * kite * 3.4;
+      }
+    }
+    gd.kiting = kite;    // 供绘制用
+
+    // 快被打穿就脱离：躲开最近的那只，但别一路逃到顶线 ——
+    // 顶线那条路的尽头是角落，不是安全（以前会在这里和入侵口的病毒对峙到天荒地老）
+    if (nearZ && gd.hp < gd.maxHp*0.45){
+      var ax=gd.x-nearZ.x, ay=gd.y-nearZ.y;
+      var ad=Math.sqrt(ax*ax+ay*ay)||1;
+      var fyv=ay/ad;
+      if (fyv<0 && gd.y < TOP_EDGE+spanY*0.30) fyv=0.35;
+      fx += ax/ad*t.safe;
+      fy += fyv*t.safe;
+    }
+
+    // 回防自己那一格 + 保持纵深
+    fx += (gd.homeX-gd.x)*t.home*0.001;
+    fy += ((LINE_Y-70+(gd.biasY||0))-gd.y)*t.depth*0.001;
+
+    // 守门席位：往入侵口顶。这两个细胞不参与分派，只盯着刚进门的那批。
+    if (gd.guard){
+      var gtx = gateX() + ((gd.idx%2)? 72 : -72);
+      var gty = TOP_EDGE + spanY*0.16;
+      fx += (gtx-gd.x)*0.0045;
+      fy += (gty-gd.y)*0.0045;
+    }
+
+    // ---- 扫视搜敌：手上没有看得见的目标，但场上还有看不见的敌人 ----
+    // 12 个细胞按编号分片区：站位守自己那条竖带的中间高度，
+    // 朝向慢慢上下扫完整条纵深。站位固定是因为扫视点如果来回跑，细胞追不上。
+    if (!gd.target) gd.idleT=(gd.idleT||0)+dt; else gd.idleT=0;
+    var scan = (!bestZ && G.darkCount > 0);
+    var sx=0, sy=0;
+    if (scan){
+      var nn = Math.max(1, alive.length);
+      sx = W * (s + 0.5) / nn;
+      var postY = TOP_EDGE + (LINE_Y - TOP_EDGE) * 0.45;
+      var pdx = sx-gd.x, pdy = postY-gd.y;
+      var pdd = Math.sqrt(pdx*pdx+pdy*pdy)||1;
+      if (pdd > 60){
+        var pw2 = Math.min(1, (pdd-60)/200) * 1.25;
+        fx += pdx/pdd*pw2;
+        fy += pdy/pdd*pw2;
+      }
+      var ph = G.time*0.55 + s*0.9;                  // 每个细胞错开相位
+      sy = TOP_EDGE + 40 + (LINE_Y - TOP_EDGE - 50) * (0.5 + 0.5*Math.sin(ph));
+      gd.scanning = 1;
+    } else gd.scanning = 0;
+
+    // 细胞之间：短距硬斥（别叠在一起）+ 中距软摊开（铺成一张网）
+    var allies=0;
+    for (var o=0;o<alive.length;o++){
+      if (o===s) continue;
+      var ob=alive[o], sd=dist(gd.x,gd.y,ob.x,ob.y);
+      if (sd<150) allies++;
+      if (sd<1) continue;
+      if (sd<34){
+        fx += (gd.x-ob.x)/sd*t.sep;
+        fy += (gd.y-ob.y)/sd*t.sep;
+      } else if (sd<140 && gSpr>0){
+        var sw=(1-sd/140)*gSpr*0.55;
+        fx += (gd.x-ob.x)/sd*sw;
+        fy += (gd.y-ob.y)/sd*sw;
+      }
+    }
+
+    // 身边到底贴了几只 —— 按真实距离数，不用"谁把它当最近目标"
+    var swarmN = 0;
+    for (var qv=0; qv<G.viruses.length; qv++){
+      var zq = G.viruses[qv];
+      if (zq.dead) continue;
+      if (dist(gd.x, gd.y, zq.x, zq.y) < 78) swarmN++;
+    }
+    // "别管我"：被三只以上贴住、身边又没别的细胞
+    if (swarmN>=3 && allies===0) gd.soloT=(gd.soloT||0)+dt;
+    else gd.soloT=0;
+    // 头顶冒一句 —— 和 "ahhh" 同级，不是字幕；每个细胞自己 14 秒冷却。
+    // 挑句子用 sayRand，不碰游戏主随机流。
+    if (swarmN>=3) gd.tightT=(gd.tightT||0)+dt; else gd.tightT=0;
+    if (gd.tightT > 1.0 && G.time - (gd.cryT||-99) > 14){
+      gd.cryT = G.time;
+      addFx({k:'txt', x:clamp(gd.x, 46, W-46), y:gd.y-36, vx:0, vy:0,
+             s: sayRand()<0.5 ? '我被缠住了！' : '救我！',
+             c:'255,158,138', sz:16, life:1.4, max:1.4});
+    }
+
+    // 已经贴到屏障了，还有一股力在往下顶 —— 被墙压住了。
+    // 把这份力转成横向的（沿着墙滑出去）；已经退到角上没地方滑，就往上翻。
+    if (gd.y > LINE_Y-12 && fy > 0.04){
+      var awx = nearZ ? (gd.x - nearZ.x) : (gd.x - W*0.5);
+      var sgn = awx >= 0 ? 1 : -1;
+      if ((sgn>0 && gd.x > W-46) || (sgn<0 && gd.x < 46)){
+        fy = -Math.abs(fy)*0.85;          // 角落：往上翻
+      } else {
+        fx += sgn*Math.abs(fy)*1.35;      // 沿墙滑
+        fy *= 0.15;
+      }
+    }
+
+    var mag=Math.sqrt(fx*fx+fy*fy);
+    if (mag>0.02){
+      var spd=CFG.soldierSpeed*Math.min(1,mag);
+      gd.x += fx/mag*spd*dt;
+      gd.y += fy/mag*spd*dt;
+    }
+    gd.x = clamp(gd.x, 16, W-16);
+    gd.y = clamp(gd.y, TOP_EDGE+16, LINE_Y+2);
+
+    gd.target = bestZ;
+
+    // 扫视时没有目标可打，把朝向指向搜索点，一路扫过去
+    if (!bestZ){
+      if (scan){
+        var wScan = Math.atan2(sy-gd.y, sx-gd.x);
+        gd.aim += angNorm(wScan-gd.aim)*Math.min(1,dt*6);   // 扫的时候转慢一点，像在搜
+      }
+      continue;
+    }
+
+    // 提前量：瞄它"将要去的地方"，而不是它现在的位置
+    var aimX=bestZ.x, aimY=bestZ.y;
+    if (t.lead>0){
+      var tf = dist(gd.x,gd.y,bestZ.x,bestZ.y)/CFG.bulletSpeed*t.lead;
+      aimX += (bestZ.vx||0)*tf;
+      aimY += (bestZ.vy||0)*tf;
+    }
+    gd.aimX=aimX; gd.aimY=aimY;
+
+    var want=Math.atan2(aimY-gd.y, aimX-gd.x);
+    gd.aim += angNorm(want-gd.aim)*Math.min(1,dt*14);
+    if (gd.cd<=0){
+      gd.cd = CFG.soldierRate*G.rateMul*rnd(0.9,1.1);
+      fire(gd, aimX, aimY);
+    }
+  }
+}
+
+function fire(gd,ax,ay){
+  var a=Math.atan2(ay-gd.y,ax-gd.x)+rnd(-0.035,0.035);
+  G.bullets.push({
+    x:gd.x+Math.cos(a)*14, y:gd.y+Math.sin(a)*14,
+    vx:Math.cos(a)*CFG.bulletSpeed, vy:Math.sin(a)*CFG.bulletSpeed,
+    dmg:CFG.soldierDmg*G.dmgMul, life:0.9
+  });
+  gd.recoil=1; gd.flash=0.05;
+  G.shells.push({
+    x:gd.x, y:gd.y-2,
+    vx:Math.cos(a+1.9)*rnd(60,130), vy:Math.sin(a+1.9)*rnd(60,130)-40,
+    life:rnd(0.5,0.9), rot:rand()*TAU, vr:rnd(-14,14)
+  });
+  sfx.shot();
+}
+
+function updateBullets(dt){
+  for (var i=G.bullets.length-1;i>=0;i--){
+    var b=G.bullets[i];
+    var steps=4, sx=b.vx*dt/steps, sy=b.vy*dt/steps, hit=false;
+    for (var s=0;s<steps && !hit;s++){
+      b.x+=sx; b.y+=sy;
+      for (var j=0;j<G.viruses.length;j++){
+        var z=G.viruses[j];
+        if (z.dead) continue;
+        // 看不见就打不中 —— 除非它已经被细胞的备用手段标出来了（exposed）。
+        // 少了这个例外，一个快被打穿的细胞会永远对着打不中的影子开火，然后一路逃到顶线卡死。
+        if (z.vis<0.35 && !z.exposed) continue;
+        if (dist(b.x,b.y,z.x,z.y) < z.r+3){
+          z.hp -= b.dmg;
+          z.flash = 0.10;
+          hit=true;
+          sfx.hit();
+          addFx({k:'spark', x:b.x, y:b.y, vx:rnd(-80,80), vy:rnd(-80,80),
+                 life:0.08, max:0.08, c:'255,240,190', s:1.7});
+          if (z.hp<=0) killVirus(j);
+          break;
+        }
+      }
+    }
+    b.life -= dt;
+    if (hit || b.life<=0 || b.y<-40 || b.x<-40 || b.x>W+40) G.bullets.splice(i,1);
+  }
+}
+
+function addFx(o){ G.fx.push(o); if (G.fx.length>480) G.fx.shift(); }
+
+function killVirus(idx){
+  var z=G.viruses[idx];
+  if (z.dead) return;
+  z.dead=true;
+  G.killed++;
+  G.killStage[Math.min(4,z.lv)]++;
+  G.waveKill[Math.min(4,z.lv)]++;      // 这一波单独记一份，用来判断"一只都没变异"
+  if (z.lv>=4) say('hexa', 18);        // 打掉了六突刺（5 级变异体）
+  G.score += 1;                        // 一只一分
+  if (z.lv===0 && rand()<0.08) say('early',26);
+
+  var t=TYPES[z.type];
+  var n=8+z.lv*4;
+  for (var i=0;i<n;i++){
+    var a=rand()*TAU, sp=rnd(40,150+z.lv*40);
+    addFx({k:'blood', x:z.x, y:z.y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
+           life:rnd(0.3,0.65), max:0.65, c:t.col.join(','), s:rnd(1.4,3.6)});
+  }
+  addFx({k:'ring', x:z.x, y:z.y, r:z.r, grow:z.r*2.4, life:0.22, max:0.22, c:'255,200,150'});
+  G.shake=Math.min(3, G.shake+(z.lv>=3?0.9:0.18));
+  if (z.lv>=3) sfx.big(); else sfx.kill();
+  G.viruses.splice(idx,1);
+}
+
+function updateFx(dt){
+  for (var i=G.fx.length-1;i>=0;i--){
+    var f=G.fx[i];
+    f.life -= dt;
+    if (f.life<=0){ G.fx.splice(i,1); continue; }
+    f.x += f.vx*dt; f.y += f.vy*dt;
+    f.vx *= Math.pow(0.05,dt); f.vy *= Math.pow(0.05,dt);
+  }
+  for (var s=G.shells.length-1;s>=0;s--){
+    var sh=G.shells[s];
+    sh.life -= dt;
+    sh.vy += 520*dt;
+    sh.x += sh.vx*dt; sh.y += sh.vy*dt;
+    sh.rot += sh.vr*dt;
+    if (sh.y > LINE_Y+6){ sh.y=LINE_Y+6; sh.vy*=-0.35; sh.vx*=0.6; }
+    if (sh.life<=0) G.shells.splice(s,1);
+  }
+}
+
+/* =========================================================
+   波次
+   ========================================================= */
+/* 每过一波，战术往一个方向推进一步 —— 大字展示的就是这个方向。
+   写法一律用"看得见的行为"，不用"更会…"这种猜谜式的说法。 */
+var PLAYER_DIRS = [
+  { t:'提前拦截',   d:'打在它前面',   k:'lead',     v:0.35, hi:1.2 },
+  { t:'铺开成网',   d:'不留死角',     k:'spread',   v:0.35, hi:1.5 },
+  { t:'迎上去',     d:'不让它靠近',   k:'advance',  v:0.30, hi:2.4 },
+  { t:'边退边打',   d:'不硬吃',       k:'retreat',  v:0.35, hi:2.0 },
+  { t:'先打眼前的', d:'别让它漏过去', k:'tgtNear',  v:0.35, hi:2.0 },
+  { t:'先打残血的', d:'别让它喘气',   k:'tgtWeak',  v:0.32, hi:2.0 },
+  { t:'不漏一个',   d:'守住自己那段', k:'home',     v:0.30, hi:1.5 },
+  { t:'拉开层次',   d:'前后两排',     k:'depth',    v:0.30, hi:1.5 }
+];
+
+function nextWave(){
+  G.wave++;
+  G.waveSpawned=0;
+  G.spawnAcc=0;
+  // 开波就把这一批的种类和数量定死，并在 waveEnterSec 内全部送进场
+  G.waveQueue=buildWaveList(G.wave);
+  G.orangeSpawned=0;
+  G.waveKill=[0,0,0,0,0];
+  G.flareT=0;
+  // 每关补弹：活着的细胞一人一枚，上一关没扔掉的作废
+  for (var si=0;si<G.cells.length;si++) G.cells[si].marks=CFG.flarePerSoldier;
+  G.spawnGap=Math.min(CFG.spawnMaxGap, CFG.waveEnterSec/Math.max(1,G.waveQueue.length));
+  // 进化方向要跨盘累积：DNA.dirIdx 记住上次走到第几步
+  var dir = PLAYER_DIRS[((DNA&&DNA.dirIdx||0) + G.upIdx) % PLAYER_DIRS.length];
+  G.upIdx++;
+  G.tac[dir.k] = Math.min(dir.hi, G.tac[dir.k] + dir.v);
+  queueBanner('我 方 进 化', dir.t, dir.d);
+  sfx.up();
+  if (!QUIET) document.getElementById('wv').textContent='第 '+(G.wave+1)+' 波';
+  if (G.wave%4===0) say('wave',12);
+}
+var BANNER_Q=[], BANNER_ON=false;
+function queueBanner(head, main, sub, red){
+  if (QUIET || !main) return;
+  BANNER_Q.push({ h:head||'', m:main, s:sub||'', r:!!red });
+  if (!BANNER_ON) nextBanner();
+}
+function nextBanner(){
+  if (!BANNER_Q.length){ BANNER_ON=false; return; }
+  BANNER_ON=true;
+  var b=BANNER_Q.shift();
+  var el=document.getElementById('bigup');
+  document.getElementById('bigupHead').textContent=b.h;
+  document.getElementById('bigupText').textContent=b.m;
+  document.getElementById('bigupSub').textContent=b.s;
+  el.className = 'on' + (b.r ? ' red' : '');
+  setTimeout(function(){
+    el.className='';
+    setTimeout(nextBanner, 240);
+  }, b.s ? 2100 : 1700);
+}
+/* =========================================================
+   细胞的抗体
+   每个细胞每关带一枚。扔给"没被标记的敌人最扎堆、最值钱"的那一片，
+   距离不限 —— 全屏都能扔。扔出去是一枚抛物线飞行的弹体，落地才点亮。
+   ========================================================= */
+function flareValue(z){
+  // 越高级、越满的，标记它越值
+  return (1 + z.lv*1.2) * (0.35 + 0.65*Math.max(0,z.hp)/Math.max(1,z.max));
+}
+
+// 最值得照的一片：以某只没被标记的病毒为圆心，累计半径内所有没被标记的
+// 病毒的价值，取总价最高的那一片，落在它们的加权重心上。
+function bestMarkSpot(){
+  var dark=[], i, j, z;
+  for (i=0;i<G.viruses.length;i++){
+    z=G.viruses[i];
+    if (z.dead || z.vis>=0.35) continue;    // 看得见的不需要再照
+    if (inMark(z.x,z.y)) continue;         // 已经被标记了
+    dark.push(z);
+  }
+  if (!dark.length) return null;
+  var R=CFG.flareR*0.8, best=null, bestV=0;
+  for (i=0;i<dark.length;i++){
+    var ax=dark[i].x, ay=dark[i].y, v=0, sx=0, sy=0, ws=0;
+    for (j=0;j<dark.length;j++){
+      if (dist(ax,ay,dark[j].x,dark[j].y) > R) continue;
+      var w=flareValue(dark[j]);
+      v+=w; sx+=dark[j].x*w; sy+=dark[j].y*w; ws+=w;
+    }
+    if (v>bestV){ bestV=v; best={x:sx/ws, y:sy/ws, v:v}; }
+  }
+  return best;
+}
+
+// 谁去扔：手上有弹、离目标最近的那个
+function pickThrower(sp){
+  var best=null, bd=1e9;
+  for (var i=0;i<G.cells.length;i++){
+    var s=G.cells[i];
+    if (!s.marks) continue;
+    var d=dist(s.x,s.y,sp.x,sp.y);
+    if (d<bd){ bd=d; best=s; }
+  }
+  return best;
+}
+
+function launchFlare(s, x, y){
+  x=clamp(x, 14, W-14); y=clamp(y, TOP_EDGE+16, LINE_Y-12);
+  var d=dist(s.x,s.y,x,y);
+  s.marks--;
+  s.throwT=0.5;
+  G.flareUsed=(G.flareUsed||0)+1;
+  s.aim=Math.atan2(y-s.y, x-s.x);
+  G.flareFly.push({
+    x0:s.x, y0:s.y-14, x1:x, y1:y, t:0,
+    dur: 0.50 + Math.min(0.60, d/1800),
+    arc: 46 + Math.min(110, d*0.13)
+  });
+  sfx.pop();
+}
+
+// 自动投掷 + 飞行中的弹体
+function updateMarks(dt){
+  for (var i=G.flareFly.length-1;i>=0;i--){
+    var f=G.flareFly[i];
+    f.t += dt;
+    if (f.t >= f.dur){
+      G.flareFly.splice(i,1);
+      G.marks.push({x:f.x1, y:f.y1, t:CFG.flareDur, max:CFG.flareDur, age:0});
+      for (var k=0;k<12;k++){
+        var a=rand()*TAU, sp2=rnd(40,150);
+        addFx({k:'spark', x:f.x1, y:f.y1, vx:Math.cos(a)*sp2, vy:Math.sin(a)*sp2,
+               life:rnd(.18,.42), max:.42, c:'255,214,150', s:rnd(1.2,2.4)});
+      }
+      sfx.mark();
+    }
+  }
+
+  G.flareT -= dt;
+  if (G.flareT > 0 || G.phase!=='play') return;
+  if (G.darkCount <= 0) return;            // 全场都被看着，没什么可照的
+  var spot=bestMarkSpot();
+  if (!spot || spot.v < 1.5) return;       // 只剩一两只，不值得浪费
+  var who=pickThrower(spot);
+  if (!who) return;
+  launchFlare(who, spot.x, spot.y);
+  G.flareT = CFG.autoFlareGap;
+}
+
+// 玩家点战场 = 指定落点；不指定就交给"最值得照的地方"
+function throwMark(x, y){
+  if (G.phase!=='play' || G.markCd>0) return;
+  var spot = (x===undefined) ? bestMarkSpot() : {x:x, y:y};
+  if (!spot) return;
+  var who=pickThrower(spot);
+  if (!who) return;
+  launchFlare(who, spot.x, spot.y);
+  G.markCd = G.markCdMax;
+}
+
+/* =========================================================
+   HUD
+   ========================================================= */
+function syncHUD(){
+  if (QUIET) return;
+  var sc=Math.round(G.score);
+  if (G._scShown !== sc){
+    G._scShown = sc;
+    document.getElementById('kc').textContent = sc+' 分';
+  }
+
+  var fb=document.getElementById('markBtn');
+  var cd=document.getElementById('markCd');
+  var ammo=0;
+  for (var ai=0;ai<G.cells.length;ai++) ammo += G.cells[ai].marks;
+  fb.className = ammo>0 ? '' : 'cool';
+  cd.textContent = ammo>0 ? (ammo+' 枚') : '无弹';
+}
+
+function gameOver(){
+  G.phase='over';
+  G.shake=0;
+  // 训练对局不写最高纪录，也不碰结算数据 —— 否则后台进化会把玩家看到的数字改掉
+  if (QUIET) { G.overBtn=null; return; }
+  // 先把结算数据拍个快照：后面的后台进化会拿 G 去跑训练对局
+  G.overData = { killStage:G.killStage.slice(), wave:G.wave, killed:G.killed,
+                 score:G.score, sec:G.time, alive:G.cells.length,
+                 steps:G.steps, ranks:(G.ranks||[]).slice() };
+  if (G.wave>best){ best=G.wave; try{ localStorage.setItem('immune_best', String(best)); }catch(e){} }
+  document.getElementById('hud').style.display='none';
+  document.getElementById('markBtn').style.display='none';
+  document.getElementById('bigup').classList.remove('on');
+  // 结算页一出现，横幅和提示就必须立刻消失，不能淡出时压在结算文字上
+  var _hi=document.getElementById('hint'); _hi.classList.remove('on'); _hi.style.display='none';
+  G.overBtn=null;
+  say('over',0);
+  // 把这一盘积累的「进化方向」沉淀进存档：下一盘从更强的状态开始
+  DNA.player = cloneTac(G.tac);
+  DNA.dirIdx = ((DNA.dirIdx||0) + G.upIdx) % PLAYER_DIRS.length;
+  dnaSave();
+  evoStart();
+}
+
+/* =========================================================
+   渲染
+   ========================================================= */
+function gateX(){ return W*0.5; }
+
+// 战场就是一整块被框住的区域。上边框中间那道缺口，就是病毒唯一的入口。
+function drawFrame(){
+  var x0=7, x1=W-7, y0=TOP_EDGE, y1=LINE_Y+4;
+  var cx=gateX(), gw=CFG.gateW;
+  var gl=cx-gw/2, gr=cx+gw/2;
+  var r=13;
+
+  function path(){
+    ctx.beginPath();
+    ctx.moveTo(gl, y0);                 // 从左半个顶边开始
+    ctx.lineTo(x0+r, y0);
+    ctx.quadraticCurveTo(x0, y0, x0, y0+r);
+    ctx.lineTo(x0, y1-r);
+    ctx.quadraticCurveTo(x0, y1, x0+r, y1);
+    ctx.lineTo(x1-r, y1);
+    ctx.quadraticCurveTo(x1, y1, x1, y1-r);
+    ctx.lineTo(x1, y0+r);
+    ctx.quadraticCurveTo(x1, y0, x1-r, y0);
+    ctx.lineTo(gr, y0);                 // 到缺口右沿停住 —— 顶边不闭合
+  }
+
+  ctx.save();
+  // 1) 边框：先一层很淡的宽晕，再一条实线
+  path();
+  ctx.strokeStyle='rgba(120,164,206,0.09)';
+  ctx.lineWidth=7;
+  ctx.stroke();
+  path();
+  ctx.strokeStyle='rgba(132,176,216,0.38)';
+  ctx.lineWidth=1.8;
+  ctx.stroke();
+
+  // 2) 内壁的一点冷光，让"框里"和"框外"分开
+  ctx.globalCompositeOperation='lighter';
+  path();
+  ctx.strokeStyle='rgba(96,150,200,0.05)';
+  ctx.lineWidth=22;
+  ctx.stroke();
+  ctx.globalCompositeOperation='source-over';
+
+  // 3) 缺口两头：两小段橙色短柱，指出这里是门
+  ctx.beginPath();
+  ctx.moveTo(gl, y0-1); ctx.lineTo(gl, y0+15);
+  ctx.moveTo(gr, y0-1); ctx.lineTo(gr, y0+15);
+  ctx.strokeStyle='rgba(255,176,96,0.60)';
+  ctx.lineWidth=2.4;
+  ctx.lineCap='round';
+  ctx.stroke();
+
+  // 4) 缺口里透出的暖光：里面是病毒待的地方
+  ctx.globalCompositeOperation='lighter';
+  var warm=ctx.createRadialGradient(cx, y0+4, 2, cx, y0+4, gw*0.85);
+  warm.addColorStop(0,   'rgba(255,128,70,0.16)');
+  warm.addColorStop(0.55,'rgba(255,100,54,0.05)');
+  warm.addColorStop(1,   'rgba(255,100,54,0)');
+  ctx.fillStyle=warm;
+  ctx.fillRect(cx-gw*0.95, y0-4, gw*1.9, 96);
+  ctx.restore();
+}
+function render(){
+  var sx=cv.width/W, sy=cv.height/H;
+  ctx.setTransform(sx,0,0,sy,0,0);
+  ctx.fillStyle='#04060b'; ctx.fillRect(0,0,W,H);
+  // 后台进化期间画面锁在结算页，别让训练对局跑到屏幕上
+  if ((EVO && !EVO.done) || G.phase==='over'){ drawOver(); return; }
+
+  var sh = G.shake>0.2 ? G.shake : 0;
+  if (sh) ctx.translate(rnd(-sh,sh), rnd(-sh,sh));
+
+  if (ground) ctx.drawImage(ground,0,0,W,H);
+
+  drawFrame();
+  drawMarks();
+  drawViruses();
+  drawBullets();
+  drawFx();
+  drawShells();
+  drawCells();
+  drawSayText();        // 台词在某个细胞头顶
+  drawMarkFly();          // 画在最上层：弹道不能被细胞和病毒盖住
+  drawCover();            // 封面页（等玩家点开战）
+  drawCharge();           // 开局充能面板
+  drawStepChip();         // 左下角的步数 / 军衔
+  drawLine();
+  drawDust();
+  drawVignette();
+
+  if (G.flashRed>0){
+    ctx.fillStyle='rgba(255,40,40,'+(G.flashRed*0.18).toFixed(3)+')';
+    ctx.fillRect(0,0,W,H);
+  }
+  ctx.setTransform(sx,0,0,sy,0,0);
+}
+
+function drawMarkFly(){
+  for (var i=0;i<G.flareFly.length;i++){
+    var f=G.flareFly[i], u=Math.min(1, f.t/f.dur), iu=1-u;
+    var px=f.x0+(f.x1-f.x0)*u;
+    var py=f.y0+(f.y1-f.y0)*u - f.arc*4*u*iu;
+    ctx.save(); ctx.globalCompositeOperation='lighter';
+
+    // 抛物线：先一层宽暖晕，再一条会流动的亮虚线 —— 一眼看出是"扔过去"的
+    ctx.beginPath();
+    for (var k=0;k<=18;k++){
+      var tk=k/18, jk=1-tk;
+      var tx=f.x0+(f.x1-f.x0)*tk, ty=f.y0+(f.y1-f.y0)*tk - f.arc*4*tk*jk;
+      if (k===0) ctx.moveTo(tx,ty); else ctx.lineTo(tx,ty);
+    }
+    ctx.strokeStyle='rgba(255,180,90,0.13)'; ctx.lineWidth=7; ctx.stroke();
+    ctx.setLineDash([7,6]);
+    ctx.lineDashOffset = -G.time*90;
+    ctx.strokeStyle='rgba(255,214,150,0.55)'; ctx.lineWidth=1.7; ctx.stroke();
+    ctx.setLineDash([]); ctx.lineDashOffset = 0;
+
+    // 出手：手里炸一圈
+    if (u < 0.4){
+      var q=u/0.4;
+      ctx.beginPath(); ctx.arc(f.x0, f.y0, 5+q*20, 0, TAU);
+      ctx.strokeStyle='rgba(255,226,168,'+(0.55*(1-q)).toFixed(3)+')';
+      ctx.lineWidth=2.2; ctx.stroke();
+      var mg=ctx.createRadialGradient(f.x0,f.y0,0,f.x0,f.y0,26*(0.5+q));
+      mg.addColorStop(0,'rgba(255,240,200,'+(0.5*(1-q)).toFixed(3)+')');
+      mg.addColorStop(1,'rgba(255,180,90,0)');
+      ctx.fillStyle=mg; ctx.beginPath(); ctx.arc(f.x0,f.y0,26*(0.5+q),0,TAU); ctx.fill();
+    }
+
+    // 拖尾：拉长，像一颗真的在飞的东西
+    for (var j=10;j>=1;j--){
+      var tj=Math.max(0, u - j*0.032), ij=1-tj;
+      var tx2=f.x0+(f.x1-f.x0)*tj, ty2=f.y0+(f.y1-f.y0)*tj - f.arc*4*tj*ij;
+      var kk=1-j/10;
+      ctx.beginPath(); ctx.arc(tx2, ty2, 1.2+kk*3.4, 0, TAU);
+      ctx.fillStyle='rgba(255,'+Math.round(150+kk*95)+',80,'+(0.05+kk*0.5).toFixed(3)+')';
+      ctx.fill();
+    }
+
+    // 弹头：外发光 + 核心
+    var hg=ctx.createRadialGradient(px,py,0,px,py,18);
+    hg.addColorStop(0,'rgba(255,250,225,0.95)');
+    hg.addColorStop(0.35,'rgba(255,210,140,0.55)');
+    hg.addColorStop(1,'rgba(255,170,80,0)');
+    ctx.fillStyle=hg; ctx.beginPath(); ctx.arc(px,py,18,0,TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(px,py,4.2,0,TAU);
+    ctx.fillStyle='rgba(255,255,245,1)'; ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawMarks(){
+  for (var i=0;i<G.marks.length;i++){
+    var f=G.marks[i], k=f.t/f.max;
+    var r=CFG.flareR*(0.88+0.12*Math.sin(G.time*7));
+    var a=Math.min(1,k*2.4);
+    ctx.save(); ctx.globalCompositeOperation='lighter';
+    var g=ctx.createRadialGradient(f.x,f.y,4,f.x,f.y,r);
+    g.addColorStop(0,'rgba(255,246,220,'+(0.44*a).toFixed(3)+')');
+    g.addColorStop(0.30,'rgba(255,214,140,'+(0.21*a).toFixed(3)+')');
+    g.addColorStop(0.72,'rgba(255,180,90,'+(0.075*a).toFixed(3)+')');
+    g.addColorStop(1,'rgba(255,160,70,0)');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(f.x,f.y,r,0,TAU); ctx.fill();
+    // 范围圈：细细一圈，标出这枚抗体真正能覆盖到哪里。
+    // 外圈固定按 CFG.flareR 画，不跟着呼吸缩放 —— 它就是实际生效半径。
+    var ringA = 0.62*Math.min(1, k*2.6);
+    ctx.strokeStyle='rgba(255,198,120,'+(ringA*0.30).toFixed(3)+')';
+    ctx.lineWidth=4; ctx.beginPath(); ctx.arc(f.x,f.y,CFG.flareR-2,0,TAU); ctx.stroke();
+    ctx.strokeStyle='rgba(255,232,188,'+ringA.toFixed(3)+')';
+    ctx.lineWidth=1.1; ctx.beginPath(); ctx.arc(f.x,f.y,CFG.flareR,0,TAU); ctx.stroke();
+    ctx.restore();
+
+    // 刚点亮的一瞬间，天上闪一个"光"字 —— 一眼就知道这里被标记了
+    var age=f.age||0;
+    if (age < 1.6){
+      var q=age/1.6;
+      var al = q<0.12 ? (q/0.12) : (1-Math.pow((q-0.12)/0.88, 1.6));
+      var sc = 1.0 + (1-Math.min(1, age/0.25))*0.45;        // 先弹大再落回
+      ctx.save();
+      ctx.globalCompositeOperation='lighter';
+      ctx.globalAlpha=Math.max(0,al)*0.92;
+      ctx.translate(f.x, f.y - 6 - q*10);
+      ctx.scale(sc,sc);
+      ctx.font='900 56px "Microsoft YaHei",Bahnschrift SemiCondensed,sans-serif';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillStyle='rgba(90,40,10,0.55)';
+      ctx.fillText('标', 1.5, 2);
+      ctx.fillStyle='rgba(255,238,196,0.98)';
+      ctx.fillText('标', 0, 0);
+      ctx.restore();
+    }
+  }
+}
+
+// 形状：圆 → 三突刺 → 四突刺 → 五突刺 → 六突刺（突刺 = 刺突蛋白）
+function demonPath(lv, r, rot){
+  ctx.beginPath();
+  if (lv===0){ ctx.arc(0,0,r,0,TAU); return; }
+  var sides = lv===1?3 : lv===2?4 : lv===3?5 : 6;
+  var inner = lv===1?0.34 : lv===2?0.40 : lv===3?0.46 : 0.50;
+  var n = sides*2;                     // 每个尖端夹一个凹口 —— 是刺，不是多边形
+  for (var i=0;i<n;i++){
+    var a = i*TAU/n + rot - Math.PI/2;
+    var rr = (i%2===0) ? r*1.25 : r*inner;
+    if (i===0) ctx.moveTo(Math.cos(a)*rr, Math.sin(a)*rr);
+    else ctx.lineTo(Math.cos(a)*rr, Math.sin(a)*rr);
+  }
+  ctx.closePath();
+}
+
+/* ---------- 军衔 ---------- */
+function drawChevron(cx, cy, lit){
+  var w=3.6, h=2.4;
+  ctx.beginPath();
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  ctx.moveTo(cx-w, cy+h);
+  ctx.lineTo(cx, cy-h);
+  ctx.lineTo(cx+w, cy+h);
+  if (lit){ ctx.strokeStyle='rgba(255,232,178,0.96)'; ctx.lineWidth=1.7; }
+  else    { ctx.strokeStyle='rgba(255,255,255,0.17)'; ctx.lineWidth=1.2; }
+  ctx.stroke();
+}
+function drawRanksOf(gd, gx, gy){
+  var lv = (G.ranks && G.ranks[gd.idx]) || 0;
+  var cx = gx + (gx > W-44 ? -13 : 13);
+  if (lv === 0){ drawChevron(cx, gy+6, false); return; }   // 0 级：一个空心，不是"没有"
+  for (var L=1; L<=lv; L++){
+    // 充能时只有"已经落地"的那几道才亮 —— 和天上掉下来的 ^ 一一对应
+    var lit = (G.charging || G.cover)
+      ? !!(G.chargeIdx && G.chargeIdx[gd.idx*10+L] < (G.chargeLanded||0))
+      : true;
+    drawChevron(cx, gy+6-(L-1)*5.4, lit);
+  }
+}
+
+/* ---------- 天上掉下来的 ^ ---------- */
+function drawChargeFall(){
+  var list = G.chargeParticles || [];
+  for (var i=0;i<list.length;i++){
+    var p=list[i];
+    var u=Math.min(1,(G.time-p.t0)/p.dur);
+    var ex=Math.pow(u,0.55), ey=Math.pow(u,1.75);   // 横向先散开，纵向越掉越快
+    var x=p.x0+(p.x1-p.x0)*ex;
+    var y=p.y0+(p.y1-p.y0)*ey;
+    var a=1-Math.max(0,(u-0.72)/0.28);           // 最后一点淡掉，交接到军衔上
+    // 一小段拖影，让"掉下去"的方向看得出来
+    var u2=Math.max(0,u-0.14);
+    var x2=p.x0+(p.x1-p.x0)*Math.pow(u2,0.55), y2=p.y0+(p.y1-p.y0)*Math.pow(u2,1.75);
+    ctx.save();
+    ctx.globalAlpha=a*0.22; ctx.strokeStyle='rgba(255,214,150,1)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(x2,y2); ctx.lineTo(x,y); ctx.stroke();
+    ctx.restore();
+    ctx.save();
+    ctx.globalAlpha=a*0.95;
+    ctx.translate(x,y);
+    var sc=1.15-0.18*ey;
+    ctx.scale(sc,sc);
+    ctx.strokeStyle='rgba(255,228,172,1)';
+    ctx.lineWidth=1.9; ctx.lineCap='round'; ctx.lineJoin='round';
+    ctx.beginPath();
+    ctx.moveTo(-3.6,2.4); ctx.lineTo(0,-2.4); ctx.lineTo(3.6,2.4);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+/* ---------- 台词：从一个细胞头顶冒出来 ---------- */
+function drawSayText(){
+  var S=G.sayTxt; if (!S) return;
+  if (!S.cell || G.cells.indexOf(S.cell) < 0){ G.sayTxt=null; return; }
+  var t=G.time-S.t0, full=S.s.length;
+  var n=Math.min(full, Math.floor(t*S.cps));
+  var total=full/S.cps + S.hold;
+  if (t > total+0.35){ G.sayTxt=null; return; }
+  if (!QUIET && n > S.n){ S.n=n; sfx.tick(); }
+  var shown=S.s.slice(0,n);
+  if (!shown) return;
+  var a = t>total ? Math.max(0, 1-(t-total)/0.35) : 1;
+
+  ctx.save();
+  ctx.font='700 15px Bahnschrift SemiCondensed,"Microsoft YaHei",sans-serif';
+  var w=ctx.measureText(S.s).width;
+  var x=clamp(S.cell.x, w/2+16, W-w/2-16);
+  var y=S.cell.y-58;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.globalAlpha=a;
+  ctx.fillStyle='rgba(6,11,18,0.92)';
+  ctx.fillText(shown, x+1.4, y+1.4);
+  ctx.fillStyle='rgba(234,247,255,0.98)';
+  ctx.fillText(shown, x, y);
+  ctx.restore();
+}
+
+/* ---------- 开局充能面板 ---------- */
+function drawCharge(){
+  if (!G.charging) return;
+  var total=G.chargeOrder.length;
+  var left=total-G.chargeLit;
+  var sk=Math.min(1, (G.chargeShake||0)/0.09);
+  var ox=Math.sin(G.time*112)*3.6*sk, oy=Math.cos(G.time*96)*2.4*sk;
+
+  ctx.save();
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+
+  ctx.fillStyle='rgba(206,230,250,0.92)';
+  ctx.font='700 24px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+  ctx.fillText('今日 '+fmtNum(G.steps)+' 步，总军衔 = '+total, W/2, 268);
+
+  ctx.fillStyle='rgba(132,162,188,0.95)';
+  ctx.font='600 17px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+  ctx.fillText('用步数增强你的战士！', W/2, 306);
+
+  ctx.save();
+  ctx.shadowColor='rgba(255,180,90,0.68)'; ctx.shadowBlur=42;
+  ctx.fillStyle='#ffe6bd';
+  ctx.font='900 96px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+  ctx.fillText(String(left), W/2+ox, 396+oy);
+  ctx.restore();
+
+  drawChargeFall();
+  ctx.restore();
+}
+
+/* ---------- 封面页 ---------- */
+function drawCover(){
+  if (!G.cover) return;
+  var total=G.chargeOrder.length;
+  ctx.save();
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+
+  ctx.fillStyle='rgba(206,230,250,0.94)';
+  ctx.font='700 26px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+  ctx.fillText('今日 '+fmtNum(G.steps)+' 步，总军衔 = '+total, W/2, 236);
+
+  ctx.fillStyle='rgba(136,166,192,0.95)';
+  ctx.font='600 18px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+  ctx.fillText('用步数增强你的战士！', W/2, 276);
+
+  ctx.restore();
+}
+
+/* ---------- 左下角：今天的步数 + 总军衔 ---------- */
+function drawStepChip(){
+  if (G.charging || G.cover || !G.ranks) return;
+  var sum=0;
+  for (var i=0;i<G.ranks.length;i++) sum+=G.ranks[i];
+  ctx.save();
+  ctx.globalAlpha=0.88;
+  ctx.fillStyle='rgba(228,242,255,0.98)';
+  ctx.font='700 20px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+  ctx.textAlign='left'; ctx.textBaseline='middle';
+  ctx.fillText('今日 '+fmtNum(G.steps)+' 步，总军衔 = '+sum, 22, H-28);
+  ctx.restore();
+}
+
+function drawViruses(){
+  for (var i=0;i<G.viruses.length;i++){
+    var z=G.viruses[i];
+    if (z.dead) continue;
+    if (z.vis<0.05) drawVirus(z, 0, true, z.exposed);
+    else drawVirus(z, z.vis, false, false);
+  }
+}
+
+function drawVirus(z, v, ghost, marked){
+  var t=TYPES[z.type];
+  var hex='rgb('+t.col[0]+','+t.col[1]+','+t.col[2]+')';
+  // 弹性：升级时先鼓再落，像被撑了一下
+  var popS = z.pop>0 ? Math.sin(z.pop*Math.PI)*0.70 : 0;
+  var r=z.r*(1+popS);
+
+  if (!ghost){
+    ctx.save();
+    ctx.globalAlpha=Math.min(1, v*(0.30+z.lv*0.12));
+    ctx.globalCompositeOperation='lighter';
+    var gr=r*(2.6+z.lv*0.4);
+    var gg=ctx.createRadialGradient(z.x,z.y,r*0.25,z.x,z.y,gr);
+    gg.addColorStop(0,hex);
+    gg.addColorStop(0.35,'rgba(255,255,255,0.06)');
+    gg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=gg;
+    ctx.beginPath(); ctx.arc(z.x,z.y,gr,0,TAU); ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.save();
+  ctx.globalAlpha = ghost ? 0.9 : v;
+  ctx.translate(z.x,z.y);
+  var sq=z.squash||0;
+  if (sq>0.01) ctx.scale(1+0.55*sq, 1-0.40*sq);   // 横向拉开、纵向压扁 = 被撕成两半
+  var rot = (z.lv>=3 ? G.time*0.45 : 0) + z.seed*0.3;
+  demonPath(z.lv, r, rot);
+  // 没标记到 = 一块深灰剪影，看不出种类、也看不出多强
+  // marked = 细胞的备用侦测手段已经标出它（画成琥珀色描边，表示"被盯上了"）
+  ctx.fillStyle = marked ? 'rgba(96,72,44,0.95)'
+                : ghost  ? 'rgba(78,88,104,0.95)'
+                         : (z.flash>0 ? '#ffffff' : hex);
+  ctx.fill();
+  ctx.strokeStyle = marked ? 'rgba(255,181,84,0.95)'
+                  : ghost  ? 'rgba(150,166,188,0.62)'
+                           : (z.flash>0 ? '#ffffff' : 'rgba(255,255,255,0.72)');
+  ctx.lineWidth = marked ? 2 : (ghost ? 1.2 : 1.7);
+  ctx.stroke();
+  // 刚升级的 0.5 秒内，即使还在盲区也把这层彩色盖上去：
+  // 玩家必须能亲眼看到"它长出新突刺了"，否则升级是隐形的。
+  var rev = ghost ? (z.reveal||0) : 0;
+  if (rev > 0.02){
+    ctx.globalAlpha = Math.min(1, rev*1.15);
+    ctx.fillStyle = hex;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,'+Math.min(1,rev).toFixed(3)+')';
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+  }
+
+  if (!ghost){
+    // 核心
+    ctx.beginPath(); ctx.arc(0,0,r*0.30,0,TAU);
+    ctx.fillStyle = z.lv>=3 ? 'rgba(255,255,255,0.95)' : 'rgba(20,26,34,0.55)';
+    ctx.fill();
+    if (z.pop>0.02){
+      ctx.globalAlpha = v*z.pop*0.5;
+      ctx.strokeStyle='rgba(255,236,180,1)'; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(0,0,r*(1.1+(1-z.pop)*1.6),0,TAU); ctx.stroke();
+    }
+  }
+  ctx.restore();
+
+  // 耐久条
+  if (!ghost && (z.hp<z.max*0.995 || z.lv>=1)){
+    var w2=Math.max(22, r*1.9), pr=clamp(z.hp/z.max,0,1);
+    var by=z.y-r*1.45-8;
+    ctx.save();
+    ctx.globalAlpha=v*0.95;
+    ctx.fillStyle='rgba(0,0,0,0.62)';
+    ctx.fillRect(z.x-w2/2, by, w2, 2.8);
+    ctx.fillStyle = z.lv===0?'rgba(160,230,190,0.95)'
+                 : z.lv===1?'rgba(210,230,140,0.95)'
+                 : z.lv===2?'rgba(255,210,120,0.98)'
+                 : z.lv===3?'rgba(255,170,110,1)':'rgba(255,100,95,1)';
+    ctx.fillRect(z.x-w2/2, by, w2*pr, 2.8);
+    for (var d=0; d<=z.lv && d<5; d++){
+      ctx.fillStyle='rgba(255,255,255,0.6)';
+      ctx.fillRect(z.x-w2/2+d*3.2, by-3.6, 2.2, 2.2);
+    }
+    ctx.restore();
+  }
+}
+
+function drawShells(){
+  ctx.save();
+  for (var i=0;i<G.shells.length;i++){
+    var s=G.shells[i];
+    ctx.save();
+    ctx.translate(s.x,s.y); ctx.rotate(s.rot);
+    ctx.globalAlpha=Math.min(1,s.life*2);
+    ctx.fillStyle='rgba(255,214,120,0.95)';
+    ctx.fillRect(-2.4,-1,4.8,2);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+function drawCells(){
+  // 手电
+  ctx.save();
+  ctx.globalCompositeOperation='lighter';
+  for (var v=0; v<G.cells.length; v++){
+    var gv=G.cells[v];
+    var va0=gv.aim-SIGHT.half, va1=gv.aim+SIGHT.half;
+    ctx.beginPath();
+    ctx.moveTo(gv.x,gv.y);
+    ctx.arc(gv.x,gv.y,SIGHT.range,va0,va1);
+    ctx.closePath();
+    var vg=ctx.createRadialGradient(gv.x,gv.y,4,gv.x,gv.y,SIGHT.range);
+    vg.addColorStop(0,'rgba(255,228,178,0.20)');
+    vg.addColorStop(0.40,'rgba(255,206,140,0.085)');
+    vg.addColorStop(1,'rgba(255,190,110,0)');
+    ctx.fillStyle=vg; ctx.fill();
+    var ng=ctx.createRadialGradient(gv.x,gv.y,2,gv.x,gv.y,SIGHT.near);
+    ng.addColorStop(0,'rgba(255,232,190,0.18)');
+    ng.addColorStop(1,'rgba(255,200,120,0)');
+    ctx.fillStyle=ng;
+    ctx.beginPath(); ctx.arc(gv.x,gv.y,SIGHT.near,0,TAU); ctx.fill();
+  }
+  ctx.restore();
+
+  for (var i=0;i<G.cells.length;i++){
+    var gd=G.cells[i];
+    var rx=-Math.cos(gd.aim)*(gd.recoil||0)*2.6;
+    var ry=-Math.sin(gd.aim)*(gd.recoil||0)*2.6;
+    var gx=gd.x+rx, gy=gd.y+ry;
+
+    if (gd.flash>0){
+      ctx.save(); ctx.globalCompositeOperation='lighter';
+      var fa=gd.flash/0.05;
+      var mx=gx+Math.cos(gd.aim)*15, my=gy+Math.sin(gd.aim)*15;
+      var fg=ctx.createRadialGradient(mx,my,0,mx,my,16*fa);
+      fg.addColorStop(0,'rgba(255,246,200,'+(0.95*fa).toFixed(2)+')');
+      fg.addColorStop(0.4,'rgba(255,205,110,'+(0.45*fa).toFixed(2)+')');
+      fg.addColorStop(1,'rgba(255,200,90,0)');
+      ctx.fillStyle=fg; ctx.beginPath(); ctx.arc(mx,my,16*fa,0,TAU); ctx.fill();
+      ctx.restore();
+    }
+
+    ctx.save();
+    ctx.globalCompositeOperation='lighter';
+    var sg=ctx.createRadialGradient(gx,gy,2,gx,gy,21);
+    sg.addColorStop(0,'rgba(255,208,138,0.30)');
+    sg.addColorStop(0.5,'rgba(255,190,100,0.10)');
+    sg.addColorStop(1,'rgba(255,180,90,0)');
+    ctx.fillStyle=sg; ctx.beginPath(); ctx.arc(gx,gy,21,0,TAU); ctx.fill();
+    ctx.restore();
+
+    var ca=Math.cos(gd.aim), sa=Math.sin(gd.aim);
+    ctx.strokeStyle = gd.flash>0 ? '#fff6dc' : 'rgba(255,214,150,0.95)';
+    ctx.lineWidth=2.2; ctx.lineCap='round';
+    ctx.beginPath();
+    ctx.moveTo(gx+ca*6, gy+sa*6);
+    ctx.lineTo(gx+ca*14, gy+sa*14);
+    ctx.stroke();
+
+    ctx.beginPath(); ctx.arc(gx,gy,7.4,0,TAU);
+    ctx.fillStyle = gd.hurt>0 ? '#ff9d8a' : (gd.flash>0 ? '#ffffff' : '#ffd08a');
+    ctx.fill();
+    ctx.strokeStyle='rgba(255,242,214,0.8)'; ctx.lineWidth=1.2; ctx.stroke();
+    drawRanksOf(gd, gx, gy);
+
+    if (gd.hp < gd.maxHp*0.995){
+      var w2=20, pr=clamp(gd.hp/gd.maxHp,0,1);
+      ctx.fillStyle='rgba(0,0,0,0.6)';
+      ctx.fillRect(gx-w2/2, gy-17, w2, 2.6);
+      ctx.fillStyle = pr>0.5?'rgba(110,225,170,0.95)':(pr>0.25?'rgba(255,200,110,0.95)':'rgba(255,100,90,0.98)');
+      ctx.fillRect(gx-w2/2, gy-17, w2*pr, 2.6);
+    }
+
+    // 一个细胞被三只以上的病毒围住、身边没有同伴 —— 头顶冒出「别管我」
+    if (gd.soloT > 0.55){
+      var bb = Math.sin(G.time*4.6 + (gd.idx||0)*1.7)*1.8;
+      var lx = clamp(gx, 46, W-46);          // 贴边的细胞也不让字跑出画面
+      ctx.save();
+      ctx.globalAlpha = 0.78 + 0.22*Math.sin(G.time*5.4 + (gd.idx||0));
+      ctx.font='800 18px Bahnschrift SemiCondensed,"Microsoft YaHei",sans-serif';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillStyle='rgba(8,14,22,0.92)';
+      ctx.fillText('别管我', lx+1.3, gy-40+bb+1.3);
+      ctx.fillStyle='rgba(255,204,148,1)';
+      ctx.fillText('别管我', lx, gy-40+bb);
+      ctx.restore();
+    }
+
+    // 场上有敌人，但这个细胞一只都看不见 —— 头顶冒问号（他在找）
+    if (!gd.target && G.viruses.length > 0 && (gd.idleT||0) > 1.0){
+      var bob = Math.sin(G.time*3.1 + (gd.idx||0)*1.9)*2.2;
+      var qx = clamp(gx, 34, W-34);
+      ctx.save();
+      ctx.globalAlpha = 0.30 + 0.18*Math.sin(G.time*2.7 + (gd.idx||0)*1.3);
+      ctx.font='800 13px Bahnschrift SemiCondensed,"Microsoft YaHei",sans-serif';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillStyle='rgba(8,14,22,0.8)';
+      ctx.fillText('?', qx+1.2, gy-30+bob+1.2);
+      ctx.fillStyle='rgba(146,196,236,1)';
+      ctx.fillText('?', qx, gy-34+bob);
+      ctx.restore();
+    }
+  }
+}
+
+function drawLine(){
+  // 屏障不再画任何东西了 —— 阵地边界已经由 battlefield 的边框表达了。
+  // 这里只保留"死的人太多"的那层红光，它是有信息量的。
+  var lost = 1 - G.cells.length/Math.max(1,G.squadPeak||12);
+  if (lost > 0.25){
+    ctx.save();
+    ctx.globalCompositeOperation='lighter';
+    var vg=ctx.createLinearGradient(0,H,0,H-190);
+    vg.addColorStop(0,'rgba(255,58,38,'+Math.min(0.40,(lost-0.25)*0.85).toFixed(3)+')');
+    vg.addColorStop(1,'rgba(255,58,38,0)');
+    ctx.fillStyle=vg; ctx.fillRect(0,H-190,W,190);
+    ctx.restore();
+  }
+}
+
+function drawBullets(){
+  ctx.save(); ctx.globalCompositeOperation='lighter'; ctx.lineCap='round';
+  for (var i=0;i<G.bullets.length;i++){
+    var b=G.bullets[i], a=Math.atan2(b.vy,b.vx);
+    ctx.strokeStyle='rgba(255,232,160,0.9)'; ctx.lineWidth=1.8;
+    ctx.beginPath();
+    ctx.moveTo(b.x-Math.cos(a)*24, b.y-Math.sin(a)*24);
+    ctx.lineTo(b.x,b.y); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawFx(){
+  ctx.save(); ctx.globalCompositeOperation='lighter';
+  for (var i=0;i<G.fx.length;i++){
+    var f=G.fx[i], k=f.life/f.max;
+    if (f.k==='split'){
+      var len=f.r*(0.35+0.65*(1-k));
+      ctx.strokeStyle='rgba('+f.c+','+k.toFixed(3)+')';
+      ctx.lineWidth=2.6*k+0.6;
+      ctx.beginPath();
+      ctx.moveTo(f.x-Math.cos(f.a)*len, f.y-Math.sin(f.a)*len);
+      ctx.lineTo(f.x+Math.cos(f.a)*len, f.y+Math.sin(f.a)*len);
+      ctx.stroke();
+    } else if (f.k==='ring'){
+      var rr=f.r+f.grow*(1-k);
+      ctx.strokeStyle='rgba('+f.c+','+(k*(f.w?1:0.8)).toFixed(3)+')';
+      ctx.lineWidth=(f.w||1.4)+k*2.4;
+      ctx.beginPath(); ctx.arc(f.x,f.y,rr,0,TAU); ctx.stroke();
+    } else if (f.k==='txt'){
+      // 浮起来的短字：变异 / 分裂
+      var up=1-k;
+      ctx.globalAlpha = Math.min(1, k*2.6);
+      ctx.font = '800 '+(f.sz||14)+'px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillStyle='rgba(0,0,0,0.6)';
+      ctx.fillText(f.s, f.x+1.2, f.y-up*24+1.2);
+      ctx.fillStyle='rgba('+f.c+',1)';
+      ctx.fillText(f.s, f.x, f.y-up*24);
+      ctx.globalAlpha=1;
+    } else {
+      ctx.globalAlpha=Math.min(1,k*1.7);
+      ctx.fillStyle='rgba('+f.c+',1)';
+      ctx.beginPath(); ctx.arc(f.x,f.y,f.s*k,0,TAU); ctx.fill();
+      ctx.globalAlpha=1;
+    }
+  }
+  ctx.restore();
+}
+
+function drawDust(){
+  ctx.save(); ctx.globalCompositeOperation='lighter';
+  for (var i=0;i<DUST.length;i++){
+    var d=DUST[i];
+    var lit=visible(d.x,d.y);
+    ctx.fillStyle = lit ? 'rgba(190,225,255,0.24)' : 'rgba(120,160,200,0.04)';
+    ctx.beginPath(); ctx.arc(d.x,d.y, lit?1.5:1.0, 0, TAU); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawVignette(){
+  var rg=ctx.createRadialGradient(W/2,H*0.45,Math.min(W,H)*0.30,W/2,H*0.5,Math.max(W,H)*0.84);
+  rg.addColorStop(0,'rgba(0,0,0,0)');
+  rg.addColorStop(0.58,'rgba(0,0,0,0.22)');
+  rg.addColorStop(1,'rgba(0,0,0,0.72)');
+  ctx.fillStyle=rg; ctx.fillRect(0,0,W,H);
+}
+
+/* =========================================================
+   结算
+   ========================================================= */
+function drawOver(){
+  ctx.fillStyle='rgba(3,5,9,0.95)'; ctx.fillRect(0,0,W,H);
+  var padX = PORTRAIT?40:80;
+  // 后台进化会把 G 换成训练对局的状态，所以结算页只读这份快照
+  var D = G.overData || G;
+  var ks = D.killStage || [0,0,0,0,0];
+  var total=0;
+  for (var q=0;q<5;q++) total+=ks[q];
+  var early = total? Math.round(ks[0]/total*100):0;
+  var stages = D.wave+1;
+  var cy = PORTRAIT ? H*0.30 : H*0.26;
+
+  // ── 主标题 ──
+  ctx.textAlign='center';
+  ctx.fillStyle='#ffcf8a';
+  ctx.font='900 58px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+  ctx.shadowColor='rgba(255,170,60,0.55)'; ctx.shadowBlur=40;
+  ctx.fillText('这 一 局', W/2, cy);
+  ctx.shadowBlur=0;
+
+  // ── 闯过几关 ──
+  ctx.fillStyle='#f2f8ff';
+  ctx.font='800 34px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+  ctx.fillText('闯过 '+stages+' 关', W/2, cy+56);
+
+  // ── 消灭多少 ──
+  ctx.fillStyle='#a8c8e0';
+  ctx.font='600 22px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+  ctx.fillText('消灭 '+D.killed+' 个病毒', W/2, cy+96);
+
+  // ── 两项关键数据 ──
+  var sy = cy+150;
+  ctx.fillStyle='rgba(255,181,84,0.22)';
+  ctx.fillRect(W/2-120, sy-16, 240, 1);
+  ctx.fillStyle='#ffe9c8';
+  ctx.font='700 26px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+  ctx.fillText((D.sec || 0).toFixed(0), W/2-56, sy+16);
+  ctx.fillStyle='#8fd6ff';
+  ctx.fillText(early+'%', W/2+56, sy+16);
+  ctx.fillStyle='#5f7d94';
+  ctx.font='600 13px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+  ctx.fillText('撑住（秒）', W/2-56, sy+34);
+  ctx.fillText('趁没变异', W/2+56, sy+34);
+
+  // ── 一句评价：这一局你是"趁小"还是"养大了才打" ──
+  var verdict = early>=62 ? '大部分病毒在变异之前就被消灭了'
+              : early>=40 ? '有些病毒挨到变异之后才被消灭'
+                          : '太多病毒是变异之后才被消灭的';
+  ctx.fillStyle = early>=62 ? '#7de0b0' : (early>=40 ? '#e8c98a' : '#e08a7d');
+  ctx.font='600 15px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+  ctx.fillText(verdict, W/2, sy+64);
+
+  ctx.fillStyle='#4a6478';
+  ctx.font='500 14px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+  ctx.fillText('最好成绩：第 '+(best+1)+' 关', W/2, sy+88);
+  if (G.evoNote){
+    ctx.fillStyle='#7de0b0';
+    ctx.font='600 14px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+    ctx.fillText(G.evoNote, W/2, sy+110);
+  } else if (EVO && !EVO.done){
+    ctx.fillStyle='#4a6478';
+    ctx.font='500 14px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+    ctx.fillText('免疫系统正在调整…', W/2, sy+110);
+  }
+
+  var bw2=230, bh2=52;
+  var bx=(W-bw2)/2, by2=(PORTRAIT?H-118:H-76);
+  if (D.ranks && D.ranks.length){
+    var rs=0; for (var ri=0;ri<D.ranks.length;ri++) rs+=D.ranks[ri];
+    ctx.fillStyle='rgba(168,198,222,0.8)';
+    ctx.font='600 16px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+    ctx.fillText('今日 '+fmtNum(D.steps||0)+' 步 · 全队 '+rs+' 道杠', W/2, by2-40);
+  }
+  ctx.fillStyle='rgba(22,32,42,0.96)';
+  ctx.fillRect(bx,by2,bw2,bh2);
+  ctx.fillStyle='rgba(255,181,84,0.92)';
+  ctx.fillRect(bx,by2,3,bh2);
+  ctx.fillStyle='#ffe9c8';
+  ctx.font='700 17px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+  ctx.fillText('再 打 一 轮', W/2, by2+33);
+  G.overBtn={x:bx,y:by2,w:bw2,h:bh2};
+
+  // 署名：跟着画面走，截图转发也带着
+  ctx.fillStyle='rgba(122,146,168,0.5)';
+  ctx.font='600 12px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+  ctx.fillText('免疫战争 · 好啦科技', W/2, H-20);
+
+  ctx.textAlign='left';
+}
+
+function roundRect(c,x,y,w,h,r){
+  c.beginPath();
+  c.moveTo(x+r,y);
+  c.arcTo(x+w,y,x+w,y+h,r);
+  c.arcTo(x+w,y+h,x,y+h,r);
+  c.arcTo(x,y+h,x,y,r);
+  c.arcTo(x,y,x+w,y,r);
+  c.closePath();
+}
+
+/* =========================================================
+   输入
+   ========================================================= */
+function toWorld(e){
+  var r=cv.getBoundingClientRect();
+  return { x:(e.clientX-r.left)/r.width*W, y:(e.clientY-r.top)/r.height*H };
+}
+function inMarkBtn(p){
+  var b=document.getElementById('markBtn').getBoundingClientRect();
+  var s=stageEl.getBoundingClientRect();
+  var bx=(b.left-s.left)/s.width*W, by=(b.top-s.top)/s.height*H;
+  var bw=b.width/s.width*W, bh=b.height/s.height*H;
+  return p.x>bx && p.x<bx+bw && p.y>by && p.y<by+bh;
+}
+cv.addEventListener('pointerdown', function(e){
+  if (G.phase==='over'){
+    if (EVO && !EVO.done) return;          // 正在后台进化，先别点
+    var p=toWorld(e), b=G.overBtn;
+    if (b && p.x>b.x && p.x<b.x+b.w && p.y>b.y && p.y<b.y+b.h) start();
+    return;
+  }
+  if (G.phase!=='play') return;
+  var q=toWorld(e);
+  if (inMarkBtn(q)) return;
+  throwMark(q.x, q.y);
+});
+
+
+document.getElementById('markBtn').addEventListener('click', function(e){
+  e.stopPropagation();
+  throwMark();
+});
+document.addEventListener('keydown', function(e){
+    if (G.cover && (e.key==='Enter'||e.key===' ')){ e.preventDefault(); beginBattle(); return; }
+  if (G.phase==='over' && (e.key==='Enter'||e.key===' ')){ e.preventDefault(); start(); }
+});
+
+/* =========================================================
+   启动
+   ========================================================= */
+var best=0;
+try { best=Number(localStorage.getItem('immune_best')||0); } catch(e){ best=0; }
+
+function start(seed){
+  G.seed = (seed === undefined) ? (Date.now() & 0x7fffffff) : (seed|0);
+  seedRng(G.seed);
+  ac();
+
+  G.phase='play';
+  G.time=0;
+  G.wave=0; G.waveSpawned=0; G.waveBreak=0; G.stallT=0;
+  G.waveQueue=buildWaveList(0);
+  G.orangeSpawned=0;
+  G.spawnGap=Math.min(CFG.spawnMaxGap, CFG.waveEnterSec/Math.max(1,G.waveQueue.length));
+  G.killed=0; G.score=0;
+  G.viruses=[]; G.bullets=[]; G.fx=[]; G.shells=[]; G.marks=[];
+  G.flareFly=[]; G.flareT=0; G.flareUsed=0;
+  G.upIdx=0;
+  G.tac=cloneTac(ACTIVE_TAC);
+  G.enemyTac=cloneEnemy(ENEMY_ACTIVE); G.evoNote='';
+  G.hold=CFG.hold;
+  G.aiming=false;
+  G.markCd=0; G.markCdMax=0.45;
+  G.squadPeak=CFG.squad;
+  G.dmgMul=1; G.rateMul=1; G.hpMul=1;
+  G.shake=0; G.flashRed=0;
+  G.darkCount=0;
+  G.killStage=[0,0,0,0,0];
+  G.waveKill=[0,0,0,0,0];
+  G.awT=0; G.guardT=0;
+  G.overBtn=null;
+  G.seenKind={};
+
+  // 步数 → 点数 → 军衔
+  G.steps = STEPS;
+  G.points = stepPoints(G.steps);
+  G.ranks = ranksFor(G.points);
+  G.chargeOrder = [];
+  for (var L=1;L<=3;L++) for (var ci=0;ci<12;ci++) if (G.ranks[ci]>=L) G.chargeOrder.push([ci,L]);
+  G.chargeIdx = {};
+  for (var qi=0;qi<G.chargeOrder.length;qi++) G.chargeIdx[G.chargeOrder[qi][0]*10+G.chargeOrder[qi][1]] = qi;
+  G.chargeDur = 1.05 + 0.028*G.chargeOrder.length;
+  G.chargeT = 0;
+  G.chargeLit = 0;
+  G.chargeLanded = 0;
+  G.chargeParticles = [];
+  G.chargeShake = 0;
+  G.cover = !QUIET;                    // 先停在一张封面页，点"开战"才开始
+  G.charging = false;
+
+  makeSquad(CFG.squad);
+  for (var i=0;i<G.cells.length;i++){
+    var rk = G.ranks[G.cells[i].idx] || 0, hk = RANK_HP[rk];
+    G.cells[i].maxHp = CFG.soldierHp * hk;
+    G.cells[i].hp = CFG.soldierHp * hk;
+  }
+
+  if (!QUIET){
+    document.getElementById('hud').style.display='';
+    document.getElementById('markBtn').style.display='none';
+    var sb0=document.getElementById('startBtn'); if (sb0) sb0.className='on';
+    document.getElementById('hint').style.display='';
+  }
+
+  document.getElementById('wv').textContent='第 1 波';
+  G._scShown = null;
+  sayClear();
+  syncHUD();
+}
+
+/* =========================================================
+   主循环
+   ========================================================= */
+var last=0, acc=0, STEP=1/60;
+var PAUSED=false;                       // 录制/调试用：暂停主循环，改为手动逐帧
+function loop(ts){
+  if (!last) last=ts;
+  var dt=(ts-last)/1000; last=ts;
+  if (PAUSED){ requestAnimationFrame(loop); return; }
+  if (dt>0.12) dt=0.12;
+  acc+=dt;
+  // 掉帧时不"补课"：以前最多一帧补 8 步，画面一卡就会连跑 8 步，
+  // 相当于把游戏快进 1.7 倍 —— 后期病毒一多就会看到一段高速混乱。
+  // 现在积压最多留 3 步（50ms），宁可慢一点也不要突然快进。
+  if (acc > STEP*3) acc = STEP*3;
+  var guard=0;
+  while (acc>=STEP && guard++<3){ update(STEP); acc-=STEP; }
+
+  for (var i=0;i<DUST.length;i++){
+    var d=DUST[i];
+    d.y -= d.vy*dt; d.x += d.vx*dt;
+    if (d.y<TOP_EDGE){ d.y=LINE_Y; d.x=rand()*W; }
+    if (d.x<0) d.x+=W;
+    if (d.x>W) d.x-=W;
+  }
+  render();
+  requestAnimationFrame(loop);
+}
+
+/* =========================================================
+   一次完整对局（无渲染）
+   遗传算法和游戏内"进化"按钮都走这一条路径，训练和实战是同一份代码。
+   拆成 make / step 两半，是为了游戏内的"进化实验室"能分帧跑，不卡界面。
+   ========================================================= */
+function makeEpisode(opt){
+  opt = opt || {};
+  if (opt.tac) ACTIVE_TAC = cloneTac(opt.tac);
+  if (opt.enemy) ENEMY_ACTIVE = cloneEnemy(opt.enemy);
+  if (opt.auction !== undefined) CFG.auction = !!opt.auction;
+  if (opt.gateGuard !== undefined) CFG.gateGuard = opt.gateGuard|0;
+  if (opt.needK !== undefined) CFG.needK = +opt.needK;
+  if (opt.hpK !== undefined) CFG.hpK = +opt.hpK;
+  if (opt.dmgK !== undefined) CFG.dmgK = +opt.dmgK;
+  if (opt.spK !== undefined) CFG.spK = +opt.spK;
+  start(opt.seed===undefined ? 1 : opt.seed);
+  return { cap: Math.round((opt.maxSec||200)*60), steps:0,
+           aliveSum:0, aliveMax:0, maxLv:0, done:false, res:null };
+}
+
+function stepEpisode(e, n){
+  while (n-- > 0 && !e.done){
+    update(1/60); e.steps++;
+    e.aliveSum += G.viruses.length;
+    if (G.viruses.length > e.aliveMax) e.aliveMax = G.viruses.length;
+    for (var mi=0; mi<G.viruses.length; mi++){
+      if (G.viruses[mi].lv > e.maxLv) e.maxLv = G.viruses[mi].lv;
+    }
+    if (G.phase!=='play' || e.steps>=e.cap) e.done=true;
+  }
+  if (!e.done) return null;
+  if (e.res) return e.res;
+  var ks=G.killStage, tot=0;
+  for (var q=0;q<5;q++) tot+=ks[q];
+  e.res = {
+    score:+G.score.toFixed(2),
+    kills:G.killed,
+    waves:G.wave,
+    sec:+G.time.toFixed(1),
+    lost:+Math.max(0, 1-G.cells.length/CFG.squad).toFixed(3),
+    alive:G.cells.length,
+    lv:[ks[0],ks[1],ks[2],ks[3],ks[4]],
+    early: tot ? +(ks[0]/tot).toFixed(3) : 0,
+    aliveAvg: e.steps ? +(e.aliveSum/e.steps).toFixed(1) : 0,
+    aliveMax: e.aliveMax,
+    maxLv: e.maxLv,
+    died: G.phase==='over'
+  };
+  return e.res;
+}
+
+function runEpisode(opt){
+  var e = makeEpisode(opt);
+  var r = null;
+  while (!r) r = stepEpisode(e, 4000);
+  return r;
+}
+
+function setTac(t){
+  ACTIVE_TAC = cloneTac(t);
+  return ACTIVE_TAC;
+}
+function getTac(){ return cloneTac(ACTIVE_TAC); }
+
+/* ---- 战术基因的一维表示：遗传算法在数组上做变异 ---- */
+var TAC_KEYS = (function(){ var a=[]; for (var k in TAC_BOUNDS) a.push(k); return a; })();
+var TAC_SPANS = (function(){ var a=[]; for (var i=0;i<TAC_KEYS.length;i++) a.push(TAC_BOUNDS[TAC_KEYS[i]]); return a; })();
+function tacToVec(t){ var v=[]; for (var i=0;i<TAC_KEYS.length;i++) v.push(+t[TAC_KEYS[i]]||0); return v; }
+function vecToTac(v){ var t={}; for (var i=0;i<TAC_KEYS.length;i++) t[TAC_KEYS[i]]=+v[i].toFixed(4); return t; }
+
+/* =========================================================
+   累积进化
+   每打完一盘，敌我各试一个变异体；赢的那个留下，存进 localStorage。
+   下一盘直接从进化后的状态开始 —— 越打越难，也越打越强。
+   ========================================================= */
+var DNA_KEY='immune_dna_v1';
+var DNA=null;
+
+function dnaLoad(){
+  try { var s=localStorage.getItem(DNA_KEY); DNA = s ? JSON.parse(s) : null; } catch(e){ DNA=null; }
+  if (!DNA || !DNA.player || !DNA.enemy){
+    DNA={ gen:0, player:cloneTac(TAC_CHAMP), enemy:cloneEnemy(ENEMY_DEFAULT), best:0 };
+  }
+  return DNA;
+}
+function dnaSave(){ try { localStorage.setItem(DNA_KEY, JSON.stringify(DNA)); } catch(e){} }
+
+// 第 1 号选项永远 = 「上次进化的结果」
+function syncCarry(){
+  ENEMY_ACTIVE = cloneEnemy(DNA.enemy);
+}
+
+function enemyToVec(e){ var v=[]; for (var k in ENEMY_BOUNDS) v.push(+e[k]); return v; }
+function vecToEnemy(v){ var o={}, i=0; for (var k in ENEMY_BOUNDS) o[k]=+v[i++].toFixed(3); return o; }
+var ENEMY_SPANS=(function(){ var s=[]; for (var k in ENEMY_BOUNDS) s.push(ENEMY_BOUNDS[k]); return s; })();
+
+function mutVec(v, spans, sigma){
+  var out=[];
+  for (var i=0;i<v.length;i++){
+    var lo=spans[i][0], hi=spans[i][1], sp=hi-lo, x=v[i];
+    if (rand()<0.05) x=lo+rand()*sp;
+    else if (rand()<0.45) x += (rand()*2-1)*sigma*sp*0.6;
+    out.push(x<lo?lo:(x>hi?hi:x));
+  }
+  return out;
+}
+
+function playerFit(eps){
+  var n=eps.length; if(!n) return 0;
+  var M=function(k){ var s=0; for(var i=0;i<n;i++) s+=eps[i][k]; return s/n; };
+  // 得分是主项，早杀率给乘数，再奖励「撑得更久」。
+  // 这里原来是 20*(1 - sec/160)：随存活时间【下降】，注释却写着「奖励撑得更久」，
+  // 方向是反的；而且 160 秒以上的局里它恒等于 0，等于从来没生效过。
+  return M('score')*(0.6+0.8*M('early'))
+       + 30*M('waves')
+       + 20*Math.min(1, M('sec')/240);
+}
+// 病毒的奖励：把玩家打崩得有多快、压住多少得分、养出多大的病毒。
+// 注意不能用「杀掉多少细胞」当主项 —— 反正每局都打到全灭，那一项永远是满的，
+// 没有区分度。真正有区别的是「多快」，所以用存活时间当主项。
+function enemyFit(eps){
+  var n=eps.length; if(!n) return 0;
+  var M=function(k){ var s=0; for(var i=0;i<n;i++) s+=eps[i][k]; return s/n; };
+  return 45*(1-Math.min(1, M('sec')/160))
+       + 30*(1-Math.min(1, M('score')/260))
+       + 25*(M('maxLv')/4)
+       + 10*M('lost');
+}
+
+var EVO=null;
+var EVO_SEEDS=[7,19,31];
+var EVO_MUTS=3;             // 每边试几个变异体
+
+function evoStart(){
+  if (EVO || !DNA) return;
+  var P=DNA.player, E=DNA.enemy;
+  var ps=[], es=[], q=[];
+  for (var m=0;m<EVO_MUTS;m++){
+    ps.push(vecToTac(mutVec(tacToVec(P), TAC_SPANS, 0.22)));
+    es.push(vecToEnemy(mutVec(enemyToVec(E), ENEMY_SPANS, 0.24)));
+  }
+  var res={base:[]};
+  for (var m2=0;m2<EVO_MUTS;m2++){ res['p'+m2]=[]; res['e'+m2]=[]; }
+  for (var s=0;s<EVO_SEEDS.length;s++){
+    q.push({tag:'base', tac:P, enemy:E, seed:EVO_SEEDS[s]});
+    for (var a=0;a<EVO_MUTS;a++) q.push({tag:'p'+a, tac:ps[a], enemy:E,  seed:EVO_SEEDS[s]});
+    for (var b=0;b<EVO_MUTS;b++) q.push({tag:'e'+b, tac:P,  enemy:es[b], seed:EVO_SEEDS[s]});
+  }
+  EVO={ q:q, i:0, res:res, ep:null, job:null, Ps:ps, Es:es, done:false, prevQuiet:QUIET };
+  QUIET=true;
+  requestAnimationFrame(evoTick);
+}
+
+function evoTick(){
+  if (!EVO || EVO.done) return;
+  var t0=performance.now();
+  while (performance.now()-t0 < 8){
+    if (!EVO.ep){
+      if (EVO.i >= EVO.q.length){ evoFinish(); return; }
+      EVO.job=EVO.q[EVO.i];
+      ENEMY_ACTIVE=cloneEnemy(EVO.job.enemy);
+      EVO.ep=makeEpisode({ tac:EVO.job.tac, seed:EVO.job.seed, maxSec:190 });
+    }
+    var r=stepEpisode(EVO.ep, 90);
+    if (r){ EVO.res[EVO.job.tag].push(r); EVO.ep=null; EVO.i++; }
+  }
+  requestAnimationFrame(evoTick);
+}
+
+function evoFinish(){
+  EVO.done=true;
+  QUIET=EVO.prevQuiet;
+  var p0=playerFit(EVO.res.base), e0=enemyFit(EVO.res.base);
+  var notes=[];
+  // 玩家：挑最好的那个变异体，要比现状好 2% 才留下
+  var bp=-1e9, bi=-1;
+  for (var i=0;i<EVO.Ps.length;i++){
+    var v=playerFit(EVO.res['p'+i]);
+    if (v>bp){ bp=v; bi=i; }
+  }
+  if (bp > p0*1.01){ DNA.player=EVO.Ps[bi]; notes.push('这套打法进步了'); }
+  var be=-1e9, bj=-1;
+  for (var j=0;j<EVO.Es.length;j++){
+    var v2=enemyFit(EVO.res['e'+j]);
+    if (v2>be){ be=v2; bj=j; }
+  }
+  if (be > e0*1.01){ DNA.enemy=EVO.Es[bj]; notes.push('病毒也换了新招'); }
+  DNA.gen=(DNA.gen||0)+1;
+  dnaSave();
+  syncCarry();
+  ACTIVE_TAC=cloneTac(DNA.player);
+  ENEMY_ACTIVE=cloneEnemy(DNA.enemy);
+  G.evoNote='第 '+DNA.gen+' 代 · '+(notes.length?notes.join(' · '):'这一盘双方都没什么长进');
+  // 训练把 G 换成了某一局对局，这里必须还回去，
+  // 否则结算页会闪一下然后变成"一局敌人堆在顶部"的游戏画面。
+  G.phase='over';
+  G.viruses=[]; G.bullets=[]; G.fx=[]; G.shells=[]; G.marks=[];
+  EVO=null;
+}
+
+dnaLoad();
+syncCarry();
+
+var _startBtn2=document.getElementById('startBtn');
+if (_startBtn2) _startBtn2.addEventListener('click', function(){ beginBattle(); });
+
+if (HEADLESS){
+  fitStage();                       // 只算布局，不建背景、不跑主循环
+} else {
+  resize();
+  syncHUD();
+  // 没有开场菜单了：直接从存档里的战术开局
+  ACTIVE_TAC = cloneTac(DNA.player);
+  start();
+  requestAnimationFrame(loop);
+}
+
+window.__G = G;
+window.__game = {
+  G:G, start:start, update:update, throwMark:throwMark,
+  W:function(){ return W; }, H:function(){ return H; }, LINE_Y:function(){ return LINE_Y; },
+  waveCfg:waveCfg, visible:visible, CFG:CFG, TYPES:TYPES, lvOf:lvOf,
+  waveTotal:waveTotal, buildWaveList:buildWaveList, typeRange:typeRange, WAVE_RULE:WAVE_RULE,
+  bestMarkSpot:bestMarkSpot, say:say, sayClear:sayClear, SAYS:SAYS,
+  seedRng:seedRng, rand:rand, HEADLESS:HEADLESS,
+  runEpisode:runEpisode, makeEpisode:makeEpisode, stepEpisode:stepEpisode, setTac:setTac, getTac:getTac,
+  TAC_BOUNDS:TAC_BOUNDS, TAC_DEFAULT:TAC_DEFAULT, cloneTac:cloneTac,
+  tacToVec:tacToVec, vecToTac:vecToTac,
+  setSteps:function(n){ STEPS = Math.max(0, n|0); }, getSteps:function(){ return STEPS; },
+  stepPoints:stepPoints, ranksFor:ranksFor, beginBattle:beginBattle,
+  getDNA:function(){ return DNA; }, dnaLoad:dnaLoad, syncCarry:syncCarry, evoStart:evoStart, getEVO:function(){ return EVO; }, enemyFit:enemyFit, playerFit:playerFit,
+  render:render, pause:function(v){ PAUSED=!!v; }, tick:function(dt){ update(dt||STEP); render(); }
+};
+
+})();
+</script>
+</body>
+</html>
