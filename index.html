@@ -41,7 +41,7 @@
     font-family:var(--cn);font-size:26px;font-weight:900;letter-spacing:12px;text-indent:12px;
     color:rgba(226,242,255,.9);text-shadow:0 0 26px rgba(110,190,255,.55),0 2px 14px rgba(0,0,0,.9)}
 
-  #startBtn{position:absolute;left:50%;top:47%;transform:translate(-50%,-50%);z-index:8;display:none;
+  #startBtn{position:absolute;left:50%;top:59%;transform:translate(-50%,-50%);z-index:8;display:none;
     font-family:var(--cn);font-size:21px;font-weight:800;letter-spacing:9px;text-indent:9px;
     color:#ffe9c8;background:rgba(34,24,10,.86);border:1px solid rgba(255,181,84,.55);
     padding:15px 44px;border-radius:0;cursor:pointer;
@@ -162,6 +162,24 @@ var EN = {
   '我 方 进 化':'OUR EVOLUTION',
   '新 毒 株':'NEW STRAIN',
 
+  /* ---- 封面 ---- */
+  '这是发生在你体内的一场战争':'A war is being fought inside your body',
+  '免疫细胞 大战 病毒':'IMMUNE CELLS  vs  VIRUSES',
+  '看看你的战士们能走多远':'See how far your squad can go',
+  '还没连步数 · 先看看你的部队':'No steps linked yet · meet your squad',
+  '连上步数，队伍会更强':'Link your steps to make them stronger',
+  '它们藏在暗处，打不中':"Hidden viruses can't be hit",
+  '点一下，照亮':'Tap to light them up',
+
+  /* ---- 结算小贴士 ---- */
+  '没被标记的病毒，免疫细胞看不见，也打不中':'Unmarked viruses are invisible, and unhittable',
+  '病毒不会等你，它一直在变异':'The virus never waits. It keeps mutating',
+  '变异一次，更耐打，也更疼':'Each mutation makes it tougher, and it hurts more',
+  '一只病毒就是一分 —— 晚打不会多给，只会多挨':'One virus, one point. Late kills pay the same, but cost more',
+  '看见，才打得动':'If you can see it, you can hit it',
+  '抗体扔出去，一片区域会被照亮 3.6 秒':'A flare lights a whole area for 3.6 seconds',
+  '运动能让你的免疫细胞更耐打一点':'Exercise makes your immune cells a little tougher',
+
   /* ---- 结算 ---- */
   '这 一 局':'THIS RUN',
   '撑住（秒）':'HELD (s)',
@@ -176,11 +194,11 @@ var EN = {
   '绿株':'GREEN',
   '复制最快 · 最不经打':'Fastest to copy · weakest armor',
   '蓝株':'BLUE',
-  '耐打 1.5 倍 · 打得更狠':'1.5x tougher · hits harder',
+  '耐打 1.5 倍 · 打得更狠':'1.5× tougher · hits harder',
   '紫株':'PURPLE',
-  '耐打 2 倍 · 打得最狠':'2x tougher · hits hardest',
+  '耐打 2 倍 · 打得最狠':'2× tougher · hits hardest',
   '橙株':'ORANGE',
-  '耐打 2 倍 · 打爆再冒两个':'2x tougher · splits in two',
+  '耐打 2 倍 · 打爆再冒两个':'2× tougher · splits in two',
 
   /* ---- 每波的进化方向 ---- */
   '提前拦截':'Intercept early',
@@ -188,11 +206,11 @@ var EN = {
   '铺开成网':'Spread wide',
   '不留死角':'No blind spots',
   '迎上去':'Push forward',
-  '不让它靠近':'Keep them off',
-  '边退边打':'Kite back',
-  '不硬吃':'Take no hits',
-  '先打眼前的':'Hit the nearest',
-  '别让它漏过去':'Do not let it slip',
+  '不让它靠近':'Hold them back',
+  '边退边打':'Back off, still firing',
+  '不硬吃':"Don't take hits",
+  '先打眼前的':"Hit what's closest",
+  '别让它漏过去':"Don't let one through",
   '先打残血的':'Finish the wounded',
   '别让它喘气':'No breathing room',
   '不漏一个':'Hold your post',
@@ -201,24 +219,24 @@ var EN = {
   '前后两排':'Two ranks deep',
 
   /* ---- 字幕 ---- */
-  '早识别，比什么都重要。':'Spotting it early beats everything.',
+  '早识别，比什么都重要。':'Spotting it early is everything.',
   '看住入侵口。早一秒都好。':'Watch the breach. One second counts.',
-  '它要过去，先过我们这关。':'To get through, it goes through us.',
-  '拖得越久，越难消灭。':'The longer it waits, the harder it dies.',
+  '它要过去，先过我们这关。':'If it gets through, it goes through us.',
+  '拖得越久，越难消灭。':'The longer it lives, the harder it dies.',
   '不能再拖了。':'We cannot wait any longer.',
   '时间不站在我们这边。':'Time is not on our side.',
-  '新毒株。别等它变异。':'New strain. Do not wait for it to mutate.',
+  '新毒株。别等它变异。':"New strain. Don't wait for it to mutate.",
   '又一种。先消灭它。':'Another kind. Kill it first.',
   '新毒株，更耐打。':'New strain. Tougher.',
   '它变异了。耐打多了。':'It mutated. Far tougher now.',
   '晚了。现在更难消灭。':'Too late. Much harder now.',
-  '太大了。现在要打很久。':'It is huge. This will take a while.',
+  '太大了。现在要打很久。':'It is huge. This is going to take a while.',
   '太耐打了。全力。':'Too tough. All guns.',
-  '再不打，就消灭不了了。':'If we do not hit it now, we never will.',
+  '再不打，就消灭不了了。':"If we don't hit it now, we never will.",
   '早一秒，少一半攻击。':'One second earlier, half the damage.',
-  '就是这样。趁它还没变异。':'That is it. Before it mutates.',
+  '就是这样。趁它还没变异。':"That's it. Before it mutates.",
   '早消灭一个，后面少挨十下。':'One early kill saves ten hits.',
-  '不能让它扩散。':'Do not let it spread.',
+  '不能让它扩散。':"Don't let it spread.",
   '只剩我们几个了。':'Only a few of us left.',
   '守住这一片。':'Hold this ground.',
   '了不起。一个都没变异。':'Not one of them mutated.',
@@ -227,9 +245,9 @@ var EN = {
   '记住：早识别。':'Remember: see it early.',
   '下次，早一点。':'Next time, sooner.',
   '朝没标记的地方扔抗体！':'Mark the dark spots!',
-  '没标记，就打不到。':'Unmarked means unhittable.',
+  '没标记，就打不到。':'No mark, no hit.',
   '识别是第一位的。':'Seeing it comes first.',
-  '没看见，不等于没有病毒。':'Not seeing it does not mean it is not there.',
+  '没看见，不等于没有病毒。':"Not seeing it doesn't mean it's not there.",
   '消灭了一个 5 级变异株！':'Took down a level-5 mutant!',
   '变异':'MUTATED',
 
@@ -238,15 +256,15 @@ var EN = {
   '出师未捷~~':'Unfinished...~~',
   '快救我':'Save me!',
   '视死如归':'Ready to die',
-  '别看到我':'Do not look at me',
-  '偷偷发育一会儿':'Just let me grow',
-  '让你看看力量！':'Behold my power!',
-  '我被缠住了！':'I am surrounded!',
+  '别看到我':"Don't look at me",
+  '偷偷发育一会儿':'Let me grow a little',
+  '让你看看力量！':'Now see my power!',
+  '我被缠住了！':"I'm surrounded!",
   '救我！':'Help!',
   '别管我':'Leave me',
   '顶住。':'Hold on.',
   '被打穿了。':'Pierced.',
-  '别让它碰到你。':'Do not let it touch you.',
+  '别让它碰到你。':"Don't let it touch you.",
 
   /* ---- 进化 ---- */
   '这套打法进步了':'New tactics learned',
@@ -383,8 +401,8 @@ var STEPS = 6386;
   var m = /[?&]steps=(\d+)/.exec(location.search);
   if (m) STEPS = Math.max(0, +m[1]);
 })();
-var RANK_HP  = [0.55, 0.82, 1.20, 1.75];   // 0/1/2/3 道杠的耐久系数
-var RANK_DMG = [0.65, 0.85, 1.12, 1.55];   // 0/1/2/3 道杠的火力系数
+var RANK_HP  = [0.75, 0.92, 1.22, 1.75];   // 0/1/2/3 道杠的耐久系数
+var RANK_DMG = [0.80, 0.90, 1.12, 1.55];   // 0/1/2/3 道杠的火力系数
 function stepPoints(s){
   var t = Math.min(Math.max(0, s), 10000) / 10000;
   return Math.round(36 * Math.pow(t, 0.7));
@@ -874,7 +892,7 @@ function spawnOne(type, x, y, m){
   if (z.type==='orange') G.orangeSpawned++;     // 一关内的橙株总量从刷出来就开始算
   if (!G.seenKind[z.type]){
     G.seenKind[z.type]=1;
-    queueBanner('新 毒 株', TYPES[z.type].name, TYPES[z.type].sub, true);
+    if (!(G.tut > 0)) queueBanner('新 毒 株', TYPES[z.type].name, TYPES[z.type].sub, true);
     say('newkind',0);
   }
   return z;
@@ -939,6 +957,14 @@ function update(dt){
 
   if (G.cover) return;                 // 封面页：等玩家点开战
 
+  if (G.tut > 0){
+    G.tut -= dt;
+    if (G.tutAuto > 0){
+      G.tutAuto -= dt;
+      if (G.tutAuto <= 0 && !G.threw) throwMark();   // 没人点就自己扔一枚，让他看见光
+    }
+  }
+
   // ---- 开局充能：点数一枚一枚打进队伍，战场先冻住 ----
   if (G.charging){
     G.chargeT += dt;
@@ -957,13 +983,16 @@ function update(dt){
     if (G.chargeT >= G.chargeDur && G.chargeParticles.length === 0){
       G.charging = false;
       sfx.up();
-      queueBanner('', '第 1 波', '');
+      G.tut = 6.2; G.tutAuto = 2.4; G.threw = false;   // 第一波先教一次
       say('start', 0);
       if (!QUIET){
+        // 底部的常驻提示等教学结束再出现，别和教学抢注意力
         var hi=document.getElementById('hint');
-        hi.classList.add('on');
-        setTimeout(function(){ hi.classList.remove('on'); }, 7000);
-          }
+        setTimeout(function(){
+          hi.classList.add('on');
+          setTimeout(function(){ hi.classList.remove('on'); }, 7000);
+        }, 6200);
+      }
     }
     return;
   }
@@ -1628,6 +1657,17 @@ function updateFx(dt){
    ========================================================= */
 /* 每过一波，战术往一个方向推进一步 —— 大字展示的就是这个方向。
    写法一律用"看得见的行为"，不用"更会…"这种猜谜式的说法。 */
+/* 结算页的小贴士：每条都只讲一件事，全部对准"早发现早消灭" */
+var TIPS = [
+  '没被标记的病毒，免疫细胞看不见，也打不中',
+  '病毒不会等你，它一直在变异',
+  '变异一次，更耐打，也更疼',
+  '一只病毒就是一分 —— 晚打不会多给，只会多挨',
+  '看见，才打得动',
+  '抗体扔出去，一片区域会被照亮 3.6 秒',
+  '运动能让你的免疫细胞更耐打一点'
+];
+
 var PLAYER_DIRS = [
   { t:'提前拦截',   d:'打在它前面',   k:'lead',     v:0.35, hi:1.2 },
   { t:'铺开成网',   d:'不留死角',     k:'spread',   v:0.35, hi:1.5 },
@@ -1779,6 +1819,7 @@ function throwMark(x, y){
   if (G.phase!=='play' || G.markCd>0) return;
   var spot = (x===undefined) ? bestMarkSpot() : {x:x, y:y};
   if (!spot) return;
+  G.threw = true;
   var who=pickThrower(spot);
   if (!who) return;
   launchFlare(who, spot.x, spot.y);
@@ -1807,7 +1848,8 @@ function gameOver(){
   // 先把结算数据拍个快照：后面的后台进化会拿 G 去跑训练对局
   G.overData = { killStage:G.killStage.slice(), wave:G.wave, killed:G.killed,
                  score:G.score, sec:G.time, alive:G.cells.length,
-                 steps:G.steps, ranks:(G.ranks||[]).slice() };
+                 steps:G.steps, ranks:(G.ranks||[]).slice(),
+                 tip: TIPS[Math.floor(sayRand()*TIPS.length)] };
   if (G.wave>best){ best=G.wave; try{ localStorage.setItem('immune_best', String(best)); }catch(e){} }
   document.getElementById('hud').style.display='none';
   document.getElementById('bigup').classList.remove('on');
@@ -1907,6 +1949,7 @@ function render(){
   drawCells();
   drawSayText();        // 台词在某个细胞头顶
   drawTalks();          // 角色自己的话（谁说话长谁头上）
+  drawTut();            // 第一波的教学
   drawMarkFly();          // 画在最上层：弹道不能被细胞和病毒盖住
   drawCover();            // 封面页（等玩家点开战）
   drawCharge();           // 开局充能面板
@@ -2127,22 +2170,40 @@ function drawTalks(){
   ctx.restore();
 }
 
+/* ---------- 第一波的教学 ---------- */
+function drawTut(){
+  if (!(G.tut > 0)) return;
+  var a = Math.min(1, G.tut / 0.7);
+  ctx.save();
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.globalAlpha = Math.max(0, a);
+  ctx.shadowColor='rgba(0,0,0,0.85)'; ctx.shadowBlur=18;
+  ctx.fillStyle='rgba(236,247,255,0.97)';
+  ctx.font='800 22px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+  ctx.fillText('它们藏在暗处，打不中', W/2, 424);
+  ctx.fillStyle='rgba(158,198,226,0.95)';
+  ctx.font='600 16px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+  ctx.fillText('点一下，照亮', W/2, 458);
+  ctx.restore();
+}
+
 /* ---------- 台词：从一个细胞头顶冒出来 ---------- */
 function drawSayText(){
   var S=G.sayTxt; if (!S) return;
   if (!S.cell || G.cells.indexOf(S.cell) < 0){ G.sayTxt=null; return; }
-  var t=G.time-S.t0, full=S.s.length;
+  var txt=T(S.s);
+  var t=G.time-S.t0, full=txt.length;
   var n=Math.min(full, Math.floor(t*S.cps));
   var total=full/S.cps + S.hold;
   if (t > total+0.35){ G.sayTxt=null; return; }
   if (!QUIET && n > S.n){ S.n=n; sfx.tick(); }
-  var shown=S.s.slice(0,n);
+  var shown=txt.slice(0,n);
   if (!shown) return;
   var a = t>total ? Math.max(0, 1-(t-total)/0.35) : 1;
 
   ctx.save();
   ctx.font='700 15px Bahnschrift SemiCondensed,"Microsoft YaHei",sans-serif';
-  var w=ctx.measureText(T(S.s)).width;
+  var w=ctx.measureText(txt).width;
   var x=clamp(S.cell.x, w/2+16, W-w/2-16);
   var y=S.cell.y-58;
   ctx.textAlign='center'; ctx.textBaseline='middle';
@@ -2191,13 +2252,42 @@ function drawCover(){
   ctx.save();
   ctx.textAlign='center'; ctx.textBaseline='middle';
 
-  ctx.fillStyle='rgba(206,230,250,0.94)';
-  ctx.font='700 26px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
-  ctx.fillText('今日 '+fmtNum(G.steps)+' 步，总军衔 = '+total, W/2, 236);
+  /* 三行开场：这是一场发生在他体内的战争 */
+  ctx.fillStyle='rgba(146,176,202,0.95)';
+  ctx.font='600 17px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+  ctx.fillText('这是发生在你体内的一场战争', W/2, 176);
 
-  ctx.fillStyle='rgba(136,166,192,0.95)';
-  ctx.font='600 18px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
-  ctx.fillText('用步数增强你的战士！', W/2, 276);
+  ctx.fillStyle='#eaf6ff';
+  ctx.font='800 33px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+  ctx.fillText('免疫细胞 大战 病毒', W/2, 220);
+
+  ctx.fillStyle='rgba(146,176,202,0.95)';
+  ctx.font='600 17px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+  ctx.fillText('看看你的战士们能走多远', W/2, 262);
+
+  /* 分隔线 */
+  var grd=ctx.createLinearGradient(W/2-110,0,W/2+110,0);
+  grd.addColorStop(0,'rgba(255,181,84,0)');
+  grd.addColorStop(0.5,'rgba(255,181,84,0.45)');
+  grd.addColorStop(1,'rgba(255,181,84,0)');
+  ctx.fillStyle=grd; ctx.fillRect(W/2-110, 300, 220, 1);
+
+  /* 步数 / 军衔 */
+  if (G.steps > 0){
+    ctx.fillStyle='rgba(210,234,252,0.95)';
+    ctx.font='700 23px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+    ctx.fillText('今日 '+fmtNum(G.steps)+' 步，总军衔 = '+total, W/2, 338);
+    ctx.fillStyle='rgba(136,166,192,0.95)';
+    ctx.font='600 16px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+    ctx.fillText('用步数增强你的战士！', W/2, 372);
+  } else {
+    ctx.fillStyle='rgba(210,234,252,0.95)';
+    ctx.font='700 23px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+    ctx.fillText('还没连步数 · 先看看你的部队', W/2, 338);
+    ctx.fillStyle='rgba(136,166,192,0.95)';
+    ctx.font='600 16px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+    ctx.fillText('连上步数，队伍会更强', W/2, 372);
+  }
 
   ctx.restore();
 }
@@ -2568,17 +2658,23 @@ function drawOver(){
   ctx.font='600 15px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
   ctx.fillText(verdict, W/2, sy+64);
 
+  if (D.tip){
+    ctx.fillStyle='rgba(140,178,208,0.95)';
+    ctx.font='500 14px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
+    ctx.fillText('· '+T(D.tip)+' ·', W/2, sy+90);
+  }
+
   ctx.fillStyle='#4a6478';
   ctx.font='500 14px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
-  ctx.fillText('最好成绩：第 '+(best+1)+' 关', W/2, sy+88);
+  ctx.fillText('最好成绩：第 '+(best+1)+' 关', W/2, sy+116);
   if (G.evoNote){
     ctx.fillStyle='#7de0b0';
     ctx.font='600 14px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
-    ctx.fillText(G.evoNote, W/2, sy+110);
+    ctx.fillText(G.evoNote, W/2, sy+140);
   } else if (EVO && !EVO.done){
     ctx.fillStyle='#4a6478';
     ctx.font='500 14px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
-    ctx.fillText('免疫系统正在调整…', W/2, sy+110);
+    ctx.fillText('免疫系统正在调整…', W/2, sy+140);
   }
 
   var bw2=230, bh2=52;
