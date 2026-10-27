@@ -218,7 +218,8 @@ var STEPS = 6386;
   var m = /[?&]steps=(\d+)/.exec(location.search);
   if (m) STEPS = Math.max(0, +m[1]);
 })();
-var RANK_HP = [1.00, 1.10, 1.22, 1.35];   // 0/1/2/3 道杠的耐久系数
+var RANK_HP  = [0.55, 0.82, 1.20, 1.75];   // 0/1/2/3 道杠的耐久系数
+var RANK_DMG = [0.65, 0.85, 1.12, 1.55];   // 0/1/2/3 道杠的火力系数
 function stepPoints(s){
   var t = Math.min(Math.max(0, s), 10000) / 10000;
   return Math.round(36 * Math.pow(t, 0.7));
@@ -1377,7 +1378,7 @@ function fire(gd,ax,ay){
   G.bullets.push({
     x:gd.x+Math.cos(a)*14, y:gd.y+Math.sin(a)*14,
     vx:Math.cos(a)*CFG.bulletSpeed, vy:Math.sin(a)*CFG.bulletSpeed,
-    dmg:CFG.soldierDmg*G.dmgMul, life:0.9
+    dmg:CFG.soldierDmg*G.dmgMul*(gd.rkDmg||1), life:0.9
   });
   gd.recoil=1; gd.flash=0.05;
   G.shells.push({
@@ -2549,9 +2550,10 @@ function start(seed){
 
   makeSquad(CFG.squad);
   for (var i=0;i<G.cells.length;i++){
-    var rk = G.ranks[G.cells[i].idx] || 0, hk = RANK_HP[rk];
-    G.cells[i].maxHp = CFG.soldierHp * hk;
-    G.cells[i].hp = CFG.soldierHp * hk;
+    var rk = G.ranks[G.cells[i].idx] || 0;
+    G.cells[i].maxHp = CFG.soldierHp * RANK_HP[rk];
+    G.cells[i].hp    = G.cells[i].maxHp;
+    G.cells[i].rkDmg = RANK_DMG[rk];
   }
 
   if (!QUIET){
