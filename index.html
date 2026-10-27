@@ -59,16 +59,6 @@
   @keyframes btnBreath{0%,100%{box-shadow:0 0 26px rgba(255,170,60,.16),inset 0 0 20px rgba(255,170,60,.05)}
     50%{box-shadow:0 0 46px rgba(255,180,70,.34),inset 0 0 28px rgba(255,170,60,.10)}}
 
-  #bigup{position:absolute;left:0;right:0;top:24%;z-index:12;text-align:center;pointer-events:none;
-    opacity:0;transform:translateY(8px);transition:opacity .22s,transform .22s}
-  #bigup.on{opacity:1;transform:translateY(0)}
-  #bigup .a{font-size:13px;letter-spacing:7px;color:#7fa8c8;margin-bottom:6px}
-  #bigup .b{font-size:29px;letter-spacing:4px;font-weight:800;color:#eaf6ff;
-    text-shadow:0 0 40px rgba(120,200,255,.6),0 4px 22px rgba(0,0,0,.95)}
-  #bigup.red .b{color:#ff9d9d;text-shadow:0 0 44px rgba(255,90,90,.6),0 4px 20px rgba(0,0,0,.9)}
-  #bigup.red .c{color:#f0c0ae}
-  #bigup .c{font-size:15px;letter-spacing:3px;font-weight:600;color:#8fb6d0;margin-top:9px;
-    text-shadow:0 2px 14px rgba(0,0,0,.95)}
 
 
   .ov{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;
@@ -114,7 +104,6 @@
     <button id="startBtn">开 战</button>
     <button id="langBtn" data-lang="zh"><i>中</i><i>EN</i></button>
 
-    <div id="bigup"><div class="a" id="bigupHead">我 方 进 化</div><div class="b" id="bigupText"></div><div class="c" id="bigupSub"></div></div>
 
     <div id="hint">点战场 = 标记一处，早一步发现</div>
 
@@ -640,10 +629,9 @@ function sayRand(){
   return saySeed/0x7fffffff;
 }
 
-function sayClear(){ G.sayTxt=null; }
+function sayClear(){ G.talks = []; }
 function say(key,gap){
   if (QUIET) return;
-  if (G.tut > 0) return;            // 第一波教学期间不说话，别和教学抢同一块地方
   var pool=SAYS[key];
   if (!pool || !G.cells || !G.cells.length) return;
   var now=(typeof performance!=='undefined'?performance.now():Date.now())/1000;
@@ -657,7 +645,7 @@ function say(key,gap){
 
   // 挑一个还活着的细胞，让这句话从它头上冒出来
   var c = G.cells[Math.floor(sayRand()*G.cells.length)] || G.cells[0];
-  G.sayTxt = { s:pool[idx], cell:c, t0:G.time, cps:20, hold:1.3, n:0 };
+  speak('cell', c, pool[idx], 2.4, true);
 }
 
 var AC=null;
@@ -939,7 +927,6 @@ function spawnOne(type, x, y, m){
   if (z.type==='orange') G.orangeSpawned++;     // 一关内的橙株总量从刷出来就开始算
   if (!G.seenKind[z.type]){
     G.seenKind[z.type]=1;
-    if (!(G.tut > 0)) queueBanner('新 毒 株', TYPES[z.type].name, TYPES[z.type].sub, true);
     say('newkind',0);
   }
   return z;
@@ -1118,8 +1105,7 @@ function updateViruses(dt){
     if (!seen && z.age > 2.0 && G.time - (G.sneakT||-99) > 3.4){
       G.sneakT = G.time;
       if (sayRand() < 0.55)
-        talkAdd(sayRand()<0.5 ? '别看到我' : '偷偷发育一会儿',
-                z.x, z.y-24, '255,150,150', 14, 1.6);
+        speak('virus', z, sayRand()<0.5 ? '别看到我' : '偷偷发育一会儿', 1.7);
     }
 
     // 变异只看时间，跟你有没有看见它无关 —— 你不看，它也在变。
@@ -1137,8 +1123,7 @@ function updateViruses(dt){
       z.flash = 1;                     // 升级瞬间泛白
       z.reveal = 1;                    // 就算在盲区，也把新形状亮出来给玩家看
       // 长到顶了，嚣张一句
-      if (nl >= 4) talkAdd(sayRand()<0.5 ? 'hahahaha' : '让你看看力量！',
-                           z.x, z.y-34, '255,120,120', 16, 1.9, true);
+      if (nl >= 4) speak('virus', z, sayRand()<0.5 ? 'hahahaha' : '让你看看力量！', 2.0, true);
       // 爆开的冲击波：两道环 + 一圈碎屑
       addFx({k:'ring', x:z.x, y:z.y, r:z.r*0.8, grow:z.r*3.4, life:0.5, max:0.5, c:'255,236,170', w:3});
       addFx({k:'ring', x:z.x, y:z.y, r:z.r*0.4, grow:z.r*2.0, life:0.28, max:0.28, c:'255,255,255', w:2});
@@ -1150,10 +1135,7 @@ function updateViruses(dt){
       }
       G.shake = Math.min(3, G.shake + 0.18+z.lv*0.12);
       sfx.pop();
-      if (nl >= 4) addFx({k:'txt', x:z.x, y:z.y-z.r-36, vx:0, vy:0, s:'hahaha',
-                          c:'255,116,104', sz:19, life:1.4, max:1.4});
-      addFx({k:'txt', x:z.x, y:z.y-z.r-12, vx:0, vy:0, s:'变异', sz:18, life:0.9, max:0.9,
-             c: nl>=3 ? '255,110,95' : (nl>=2 ? '255,176,90' : '255,226,150')});
+      speak('virus', z, '变异', 1.3, true);
       if (nl>=3) say('big',20);
       else if (nl>=2) say('grow',18);
     }
@@ -1190,7 +1172,7 @@ function updateViruses(dt){
         addFx({k:'ring', x:z.x + CA*z.r*0.6, y:z.y + SA*z.r*0.6, r:z.r*0.7, grow:z.r*2.2,
                life:0.38, max:0.38, c:'255,190,110', w:3});
         addFx({k:'split', x:z.x, y:z.y, a:sa0, r:z.r*2.2, life:0.26, max:0.26, c:'255,236,190', s:0, grow:0});
-        addFx({k:'txt', x:z.x, y:z.y-z.r-14, vx:0, vy:0, s:'复制', c:'255,168,90', sz:18, life:0.95, max:0.95});
+        speak('virus', z, '复制', 1.3);
         for (var s2=0;s2<10;s2++){
           var sa=rand()*TAU, ss=rnd(60,140);
           addFx({k:'blood', x:z.x, y:z.y, vx:Math.cos(sa)*ss, vy:Math.sin(sa)*ss,
@@ -1273,9 +1255,7 @@ function updateViruses(dt){
         G.flashRed = Math.max(G.flashRed, 0.10);
         if (rand()<0.10){
           var bl = ['顶住。', '好疼。', '别咬我。', '别追我了。'];
-          addFx({k:'txt', x:clamp(tgt.x, 46, W-46), y:tgt.y-10, vx:0, vy:0,
-                 s: bl[Math.floor(sayRand()*bl.length)],
-                 c:'255,170,140', sz:14, life:1.1, max:1.1});
+          speak('cell', tgt, bl[Math.floor(sayRand()*bl.length)], 1.4);
         }
         if (tgt.hp <= 0) killCell(tgt);
       }
@@ -1290,8 +1270,7 @@ function killCell(s){
   if (idx<0) return;
   G.cells.splice(idx,1);
   // 最后一口气：头顶留一句
-  talkAdd(sayRand()<0.5 ? '为我报仇~~' : '出师未捷~~',
-          s.x, s.y-26, '226,238,252', 16, 1.9, true);
+  speak('cell', null, sayRand()<0.5 ? '为我报仇~~' : '出师未捷~~', 2.0, true, s.x, s.y-30);
   for (var i=0;i<16;i++){
     var a=rand()*TAU;
     addFx({k:'blood', x:s.x, y:s.y, vx:Math.cos(a)*rnd(50,200), vy:Math.sin(a)*rnd(50,200),
@@ -1548,14 +1527,12 @@ function updateCells(dt){
     if (swarmN>=3) gd.tightT=(gd.tightT||0)+dt; else gd.tightT=0;
     if (gd.tightT > 1.0 && G.time - (gd.cryT||-99) > 14){
       gd.cryT = G.time;
-      addFx({k:'txt', x:clamp(gd.x, 46, W-46), y:gd.y-36, vx:0, vy:0,
-             s: sayRand()<0.5 ? '我被包围了！' : '救我！',
-             c:'255,158,138', sz:16, life:1.4, max:1.4});
+      speak('cell', gd, sayRand()<0.5 ? '我被包围了！' : '救我！', 1.6);
     }
     // 残血：自己喊一句（每个细胞 16 秒最多一次）
     if (gd.hp < gd.maxHp*0.34 && G.time - (gd.woundT||-99) > 16){
       gd.woundT = G.time;
-      talkAdd(sayRand()<0.5 ? '快救我' : '视死如归', gd.x, gd.y-32, '255,214,178', 15, 1.7);
+      speak('cell', gd, sayRand()<0.5 ? '快救我' : '视死如归', 1.7);
     }
 
     // 已经贴到屏障了，还有一股力在往下顶 —— 被墙压住了。
@@ -1742,36 +1719,11 @@ function nextWave(){
   var dir = PLAYER_DIRS[((DNA&&DNA.dirIdx||0) + G.upIdx) % PLAYER_DIRS.length];
   G.upIdx++;
   G.tac[dir.k] = Math.min(dir.hi, G.tac[dir.k] + dir.v);
-  queueBanner('我 方 进 化', dir.t, dir.d);
   sfx.up();
   if (!QUIET) document.getElementById('wv').textContent=T('第 '+(G.wave+1)+' 波');
   if (G.wave%4===0) say('wave',12);
 }
-var BANNER_Q=[], BANNER_ON=false, BANNER_T=0;
-function clearBanners(){
-  BANNER_Q.length = 0; BANNER_ON = false;
-  if (BANNER_T){ clearTimeout(BANNER_T); BANNER_T = 0; }
-  var el=document.getElementById('bigup'); if (el) el.className='';
-}
-function queueBanner(head, main, sub, red){
-  if (QUIET || !main) return;
-  BANNER_Q.push({ h:head||'', m:main, s:sub||'', r:!!red });
-  if (!BANNER_ON) nextBanner();
-}
-function nextBanner(){
-  if (!BANNER_Q.length){ BANNER_ON=false; return; }
-  BANNER_ON=true;
-  var b=BANNER_Q.shift();
-  var el=document.getElementById('bigup');
-  document.getElementById('bigupHead').textContent=T(b.h);
-  document.getElementById('bigupText').textContent=T(b.m);
-  document.getElementById('bigupSub').textContent=T(b.s);
-  el.className = 'on' + (b.r ? ' red' : '');
-  BANNER_T = setTimeout(function(){
-    el.className='';
-    BANNER_T = setTimeout(nextBanner, 240);
-  }, b.s ? 2100 : 1700);
-}
+
 /* =========================================================
    细胞的抗体
    每个细胞每关带一枚。扔给"没被标记的敌人最扎堆、最值钱"的那一片，
@@ -1888,7 +1840,6 @@ function syncHUD(){
 
 function gameOver(){
   G.phase='over';
-  clearBanners();
   G.shake=0;
   // 训练对局不写最高纪录，也不碰结算数据 —— 否则后台进化会把玩家看到的数字改掉
   if (QUIET) { G.overBtn=null; return; }
@@ -1899,7 +1850,6 @@ function gameOver(){
                  tip: TIPS[Math.floor(sayRand()*TIPS.length)] };
   if (G.wave>best){ best=G.wave; try{ localStorage.setItem('immune_best', String(best)); }catch(e){} }
   document.getElementById('hud').style.display='none';
-  document.getElementById('bigup').classList.remove('on');
   // 结算页一出现，横幅和提示就必须立刻消失，不能淡出时压在结算文字上
   var _hi=document.getElementById('hint'); _hi.classList.remove('on'); _hi.style.display='none';
   G.overBtn=null;
@@ -1994,9 +1944,7 @@ function render(){
   drawFx();
   drawShells();
   drawCells();
-  drawSayText();        // 台词在某个细胞头顶
   drawTalks();          // 角色自己的话（谁说话长谁头上）
-  drawTut();            // 第一波的教学
   drawMarkFly();          // 画在最上层：弹道不能被细胞和病毒盖住
   drawCover();            // 封面页（等玩家点开战）
   drawCharge();           // 开局充能面板
@@ -2182,83 +2130,63 @@ function drawChargeFall(){
   }
 }
 
-/* ---------- 角色台词：谁说话就长在谁头顶 ---------- */
-function talkAdd(s, x, y, c, sz, life, pri){
-  if (QUIET) return;
-  var T = G.talks || (G.talks = []);
-  for (var i=T.length-1;i>=0;i--) if (G.time-T[i].t0 > T[i].life) T.splice(i,1);
-  if (T.length >= 2) return;                              // 同时最多两句，别糊成一团
-  if (!G.talkOn){ G.talkOn = true; G.talkT = -99; }
-  if (!pri && G.time - G.talkT < 0.9) return;             // 普通台词之间隔一下
+/* ---------- 说话：谁开口，字就长在谁头上 ----------
+   只有两套模板：战士冷白、病毒红。同一字体、同一动效、跟着人走。 */
+var SIDE_STYLE = {
+  cell:  { c:'230,241,255', uy:42 },
+  virus: { c:'255,122,122', uy:30 }
+};
+function speak(side, owner, text, life, pri, fx, fy){
+  if (QUIET || !text) return;
+  var arr = G.talks || (G.talks = []);
+  for (var i=arr.length-1;i>=0;i--) if (G.time-arr[i].t0 > arr[i].life) arr.splice(i,1);
+  if (arr.length >= 2) return;                     // 同时最多两句
+  if (G.talkT === undefined) G.talkT = -99;
+  if (!pri && G.time - G.talkT < 0.9) return;      // 日常台词之间隔一下
   G.talkT = G.time;
-  T.push({ s:s, x:clamp(x, 54, W-54), y:y, t0:G.time, life:life||1.6, c:c||'236,246,255', sz:sz||15 });
+  arr.push({ side:side, owner:owner||null, bx:fx, by:fy,
+             s:text, t0:G.time, life:life||1.7 });
 }
 function drawTalks(){
-  var T = G.talks; if (!T || !T.length) return;
+  var arr = G.talks; if (!arr || !arr.length) return;
   ctx.save();
   ctx.textAlign='center'; ctx.textBaseline='middle';
-  for (var i=0;i<T.length;i++){
-    var q=T[i], age=G.time-q.t0;
+  ctx.font='700 15px Bahnschrift SemiCondensed,"Microsoft YaHei",sans-serif';
+  var placed = [];
+  for (var i=0;i<arr.length;i++){
+    var q=arr[i], age=G.time-q.t0;
     if (age > q.life) continue;
-    var a = age<0.1 ? age/0.1 : (age>q.life-0.4 ? (q.life-age)/0.4 : 1);
+    var st = SIDE_STYLE[q.side] || SIDE_STYLE.cell;
+    var live = false, ox, oy;
+    if (q.owner){
+      if (q.side==='cell'  && G.cells.indexOf(q.owner) >= 0) live = true;
+      if (q.side==='virus' && !q.owner.dead && G.viruses.indexOf(q.owner) >= 0) live = true;
+    }
+    if (live){ ox = q.owner.x; oy = q.owner.y - st.uy; }
+    else { ox = q.bx; oy = q.by; }
+    if (ox == null) continue;
+
+    var txt = T(q.s);
+    var w = ctx.measureText(txt).width;
+    ox = clamp(ox, w/2+16, W-w/2-16);
+    for (var k=0;k<placed.length;k++){
+      if (Math.abs(ox-placed[k][0]) < 90 && Math.abs(oy-placed[k][1]) < 26) oy -= 24;
+    }
+    placed.push([ox, oy]);
+
+    var a = age<0.1 ? age/0.1 : (age > q.life-0.4 ? (q.life-age)/0.4 : 1);
     if (a <= 0) continue;
     var pop = age<0.1 ? 0.72+0.28*(age/0.1) : 1;
     ctx.save();
     ctx.globalAlpha = Math.min(1,a);
-    ctx.translate(q.x, q.y - Math.min(9, age*5));
+    ctx.translate(ox, oy - Math.min(9, age*5));
     ctx.scale(pop, pop);
-    ctx.font='800 '+(q.sz||15)+'px Bahnschrift SemiCondensed,"Microsoft YaHei",sans-serif';
     ctx.lineJoin='round'; ctx.lineWidth=3.6; ctx.strokeStyle='rgba(4,8,14,0.9)';
-    ctx.strokeText(q.s, 0, 0);
-    ctx.fillStyle='rgba('+q.c+',1)';
-    ctx.fillText(q.s, 0, 0);
+    ctx.strokeText(txt, 0, 0);
+    ctx.fillStyle = 'rgba('+st.c+',1)';
+    ctx.fillText(txt, 0, 0);
     ctx.restore();
   }
-  ctx.restore();
-}
-
-/* ---------- 第一波的教学 ---------- */
-function drawTut(){
-  if (!(G.tut > 0)) return;
-  var a = Math.min(1, G.tut / 0.7);
-  ctx.save();
-  ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.globalAlpha = Math.max(0, a);
-  ctx.shadowColor='rgba(0,0,0,0.85)'; ctx.shadowBlur=18;
-  ctx.fillStyle='rgba(236,247,255,0.97)';
-  ctx.font='800 22px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
-  ctx.fillText('它们藏在暗处，看不到', W/2, 424);
-  ctx.fillStyle='rgba(158,198,226,0.95)';
-  ctx.font='600 16px Bahnschrift SemiCondensed,Bahnschrift,"Microsoft YaHei",sans-serif';
-  ctx.fillText('点一下，照亮', W/2, 458);
-  ctx.restore();
-}
-
-/* ---------- 台词：从一个细胞头顶冒出来 ---------- */
-function drawSayText(){
-  var S=G.sayTxt; if (!S) return;
-  if (!S.cell || G.cells.indexOf(S.cell) < 0){ G.sayTxt=null; return; }
-  var txt=T(S.s);
-  var t=G.time-S.t0, full=txt.length;
-  var n=Math.min(full, Math.floor(t*S.cps));
-  var total=full/S.cps + S.hold;
-  if (t > total+0.35){ G.sayTxt=null; return; }
-  if (!QUIET && n > S.n){ S.n=n; sfx.tick(); }
-  var shown=txt.slice(0,n);
-  if (!shown) return;
-  var a = t>total ? Math.max(0, 1-(t-total)/0.35) : 1;
-
-  ctx.save();
-  ctx.font='700 15px Bahnschrift SemiCondensed,"Microsoft YaHei",sans-serif';
-  var w=ctx.measureText(txt).width;
-  var x=clamp(S.cell.x, w/2+16, W-w/2-16);
-  var y=S.cell.y-58;
-  ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.globalAlpha=a;
-  ctx.fillStyle='rgba(6,11,18,0.92)';
-  ctx.fillText(shown, x+1.4, y+1.4);
-  ctx.fillStyle='rgba(234,247,255,0.98)';
-  ctx.fillText(shown, x, y);
   ctx.restore();
 }
 
@@ -2819,7 +2747,6 @@ function start(seed){
   G.chargeShake = 0;
   G.talks = [];
   G.talkT = -99;
-  clearBanners();
   G.cover = !QUIET;                    // 先停在一张封面页，点"开战"才开始
   G.charging = false;
 
